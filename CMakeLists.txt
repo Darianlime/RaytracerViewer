@@ -1,7 +1,9 @@
-﻿cmake_minimum_required(VERSION 3.11)
+﻿set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+cmake_minimum_required(VERSION 3.11)
 
 set(CMAKE_TOOLCHAIN_FILE
-    "C:/VCPKG/vcpkg/scripts/buildsystems/vcpkg.cmake"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/vcpkg/scripts/buildsystems/vcpkg.cmake"
     CACHE STRING "Vcpkg toolchain file"
 )
 
@@ -38,6 +40,9 @@ add_executable(RaytracerViewer
     src/RaytracerViewer.cpp
     src/Screen.cpp
     src/UseImGui.cpp
+    src/Texture.cpp
+    src/ViewportGui.cpp
+    
 )
 
 target_include_directories(RaytracerViewer PRIVATE include)
@@ -47,3 +52,4 @@ target_link_libraries(RaytracerViewer PRIVATE
     glfw
     imgui
 )
+

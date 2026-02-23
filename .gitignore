@@ -22,3 +22,5 @@ imgui.ini
 ThirdParty/vcpkg/installed/
 ThirdParty/vcpkg/buildtrees/
 ThirdParty/vcpkg/downloads/
+
+vcpkg_installed/

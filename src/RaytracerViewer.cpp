@@ -1,4 +1,4 @@
-﻿#include "UseImGui.h"
+﻿#include "ViewportGui.h"
 #include "Screen.h"
 
 #include <iostream>
@@ -13,19 +13,25 @@ int main()
 		glfwTerminate();
 		return -1;
 	}
+
 	UseImGui ImGui;
+	ViewportGui viewportGui;
 	ImGui.Init(screen.GetWindow());
 	while (!screen.ShouldClose()) {
 		screen.NewFrame();
 		screen.Update();
 
-		ImGui.NewFrames();
-		ImGui.Update();
-		ImGui.Render();
+		ImGui.PostUpdate();
+		viewportGui.PostUpdate();
 
+		ImGui.Update();
+		viewportGui.Update();
+
+		ImGui.Render();
 
 	}
 	ImGui.Shutdown();
+	viewportGui.Shutdown();
 	glfwTerminate();
 	
 	cout << "Hello CMake." << endl;

@@ -11,9 +11,10 @@
 class UseImGui {
 	private:
 		ImVec4 color;
+		float fov;
 	public:
 		void Init(GLFWwindow* window);
-		void NewFrames();
+		virtual void PostUpdate();
 		virtual void Update();
 		void Render();
 		void Shutdown();

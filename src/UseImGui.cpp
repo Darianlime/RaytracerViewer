@@ -11,7 +11,7 @@ void UseImGui::Init(GLFWwindow* window) {
 	ImGui_ImplOpenGL3_Init("#version 330");
 }
 
-void UseImGui::NewFrames() {
+void UseImGui::PostUpdate() {
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
@@ -33,8 +33,22 @@ void UseImGui::NewFrames() {
     ImGui::PopStyleVar(3);
 
     ImGuiID dockSpaceId = ImGui::GetID("InvisibleWindowDockSpace");
+    static bool first_time = true;
+    if (first_time)
+    {
+        first_time = false;
+        ImGui::DockBuilderRemoveNode(dockSpaceId);
+		ImGui::DockBuilderAddNode(dockSpaceId, ImGuiDockNodeFlags_PassthruCentralNode);
+        ImGui::DockBuilderSetNodeSize(dockSpaceId, viewport->Size);
 
-    ImGui::DockSpace(dockSpaceId, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
+		ImGuiID dockIdLeft = ImGui::DockBuilderSplitNode(dockSpaceId, ImGuiDir_Left, 0.25f, nullptr, &dockSpaceId);
+
+        ImGui::DockBuilderDockWindow("Viewport", dockSpaceId);
+        ImGui::DockBuilderDockWindow("Properties", dockIdLeft);
+
+		ImGui::DockBuilderFinish(dockSpaceId);
+    }
+
     ImGui::End();
 }
 
@@ -50,13 +64,16 @@ void UseImGui::Update() {
         ImGui::EndMainMenuBar();
     }
 
-    ImGui::Begin("Viewport");
-    ImGui::Text("Render");
-    ImGui::End();
 
     ImGui::Begin("Properties");
+    if (ImGui::CollapsingHeader("Camera"))
+    {
+        ImGui::SliderFloat("FOV", &fov, 0.0f, 180.0f);
+    }
     ImGui::ColorEdit3("Color", (float*)&color);
     ImGui::End();
+
+
 }
 
 void UseImGui::Render() {
