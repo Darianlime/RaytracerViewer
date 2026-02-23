@@ -1,0 +1,24 @@
+# CMake build
+build/
+CMakeFiles/
+CMakeCache.txt
+
+# Visual Studio / IDE files
+.vs/
+*.suo
+*.user
+*.VC.db
+
+# Binaries
+*.exe
+*.dll
+*.lib
+*.out
+
+# ImGui settings
+imgui.ini
+
+# vcpkg build folders (not submodule!)
+ThirdParty/vcpkg/installed/
+ThirdParty/vcpkg/buildtrees/
+ThirdParty/vcpkg/downloads/
