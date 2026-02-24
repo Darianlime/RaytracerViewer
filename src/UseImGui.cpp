@@ -1,4 +1,4 @@
-#include "UseImGui.h"
+#include "Gui/UseImGui.h"
 
 void UseImGui::Init(GLFWwindow* window) {
 	IMGUI_CHECKVERSION();
@@ -63,17 +63,6 @@ void UseImGui::Update() {
         }
         ImGui::EndMainMenuBar();
     }
-
-
-    ImGui::Begin("Properties");
-    if (ImGui::CollapsingHeader("Camera"))
-    {
-        ImGui::SliderFloat("FOV", &fov, 0.0f, 180.0f);
-    }
-    ImGui::ColorEdit3("Color", (float*)&color);
-    ImGui::End();
-
-
 }
 
 void UseImGui::Render() {

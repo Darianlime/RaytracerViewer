@@ -42,7 +42,7 @@ add_executable(RaytracerViewer
     src/UseImGui.cpp
     src/Texture.cpp
     src/ViewportGui.cpp
-    
+    src/PropertiesGui.cpp
 )
 
 target_include_directories(RaytracerViewer PRIVATE include)
@@ -52,4 +52,6 @@ target_link_libraries(RaytracerViewer PRIVATE
     glfw
     imgui
 )
+
+add_subdirectory(ThirdParty/RaytracerCore/RaytracingCore)
 

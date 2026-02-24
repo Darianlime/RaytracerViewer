@@ -1,4 +1,4 @@
-﻿#include "ViewportGui.h"
+﻿#include "Gui/ViewportGui.h"
 #include "Screen.h"
 
 #include <iostream>
@@ -34,6 +34,5 @@ int main()
 	viewportGui.Shutdown();
 	glfwTerminate();
 	
-	cout << "Hello CMake." << endl;
 	return 0;
 }
