@@ -17,15 +17,24 @@ using namespace Raytracer;
 
 class ViewportGui : public UseImGui {
 	private:
+		bool start = true;
+
 		const int BLOCK_SIZE = 64;
 		const int RGB_STRIDE = 3;
 		int blocksCreated = 0;
+		atomic<int> blocksFinished = 0;
 		int blockWidth = 0;
 		int blockHeight = 0;
 		int numThreads = 0;
-		queue<int> threadFinishIndex;
+		atomic<bool> isRendering = true;
+		atomic<int> tilesRendered = 0;
+		atomic<int> rowsRendered = 0;
+		condition_variable cv;
+		mutex mtx;
+		bool hasWork = false;
 		vector<future<void>> renderThreads;
-		void WorkerRenderer(ImVec2 startIndex, ImVec2 blockSize);
+		vector<thread> renderWorkers;
+		void WorkerRenderer();
 
 
 
@@ -40,6 +49,7 @@ class ViewportGui : public UseImGui {
 
 	public:
 		ViewportGui();
+		~ViewportGui();
 		void PostUpdate() override;
 		void Update() override;
 	};
