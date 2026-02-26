@@ -1,9 +1,10 @@
 ﻿#include "Gui/ViewportGui.h"
+#include "Gui/PropertiesGui.h"
 #include "Screen.h"
-
 #include <iostream>
 
 using namespace std;
+
 
 int main()
 {
@@ -16,6 +17,7 @@ int main()
 
 	UseImGui ImGui;
 	ViewportGui viewportGui;
+	PropertiesGui propertiesGui;
 	ImGui.Init(screen.GetWindow());
 	while (!screen.ShouldClose()) {
 		screen.NewFrame();
@@ -26,6 +28,7 @@ int main()
 
 		ImGui.Update();
 		viewportGui.Update();
+		propertiesGui.Update();
 
 		ImGui.Render();
 

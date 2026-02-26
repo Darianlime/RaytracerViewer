@@ -1,5 +1,5 @@
-#ifndef VIEWPORTGUI_H
-#define VIEWPORTGUI_H
+#ifndef PROPERTIES_GUI_H
+#define PROPERTIES_GUI_H
 
 #include "UseImGui.h"
 
@@ -10,4 +10,4 @@ public:
 	void Update() override;
 };
 
-#endif // !VIEWPORTGUI_H
+#endif // !PROPERTIES_GUI_H

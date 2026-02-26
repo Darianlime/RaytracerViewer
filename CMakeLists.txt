@@ -53,5 +53,7 @@ target_link_libraries(RaytracerViewer PRIVATE
     imgui
 )
 
-add_subdirectory(ThirdParty/RaytracerCore/RaytracingCore)
+set(RAYTRACER_BUILD_APP OFF CACHE BOOL "" FORCE)
 
+add_subdirectory(ThirdParty/RaytracerCore/RaytracingCore)
+target_link_libraries(RaytracerViewer PRIVATE lib)

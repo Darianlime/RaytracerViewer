@@ -11,7 +11,6 @@
 class UseImGui {
 	private:
 		ImVec4 color;
-		float fov;
 	public:
 		void Init(GLFWwindow* window);
 		virtual void PostUpdate();
