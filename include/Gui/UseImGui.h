@@ -8,6 +8,8 @@
 #include <imgui_impl_opengl3.h>
 #include <imgui_internal.h>
 
+#include "Factory/ObjectFactory.h"
+
 class UseImGui {
 	private:
 		ImVec4 color;

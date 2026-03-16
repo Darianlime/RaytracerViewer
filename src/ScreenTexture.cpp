@@ -1,8 +1,8 @@
-#include "Texture.h"
+#include "ScreenTexture.h"
 
-int Texture::currentId = 0;
+int ScreenTexture::currentId = 0;
 
-Texture::Texture(bool defaultParams) : id(currentId++) {
+ScreenTexture::ScreenTexture(bool defaultParams) : id(currentId++) {
 	Generate();
 
 	if (defaultParams) {
@@ -11,7 +11,7 @@ Texture::Texture(bool defaultParams) : id(currentId++) {
 	}
 }
 
-Texture::Texture(const char* path, const char* name, bool defaultParams) : path(path), name(name), id(currentId++) {
+ScreenTexture::ScreenTexture(const char* path, const char* name, bool defaultParams) : path(path), name(name), id(currentId++) {
 	Generate();
 
 	if (defaultParams) {
@@ -20,12 +20,12 @@ Texture::Texture(const char* path, const char* name, bool defaultParams) : path(
 	}
 }
 
-void Texture::Generate() {
+void ScreenTexture::Generate() {
 	glGenTextures(1, &tex);
 	glBindTexture(GL_TEXTURE_2D, tex);
 }
 
-void Texture::Load(bool flip) {
+void ScreenTexture::Load(bool flip) {
 //	stbi_set_flip_vertically_on_load(flip);
 //
 //	unsigned char* data = stbi_load(path, &width, &height, &nChannels, 0);
@@ -59,34 +59,39 @@ void Texture::Load(bool flip) {
 //	stbi_image_free(data);
 }
 
-void Texture::SetTexImage(GLint internalformat, GLsizei width, GLsizei height, GLenum format, const void* data) {
+void ScreenTexture::SetTexImage(GLint internalformat, GLsizei width, GLsizei height, GLenum format, const void* data) {
 	Bind();
 	glTexImage2D(GL_TEXTURE_2D, 0, internalformat, width, height, 0, format, GL_UNSIGNED_BYTE, data);
 }
 
-void Texture::SetTexSubImage(GLsizei width, GLsizei height, GLenum format, const void* data) {
+void ScreenTexture::SetTexSubImage(GLsizei width, GLsizei height, GLenum format, const void* data) {
 	Bind();
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, format, GL_UNSIGNED_BYTE, data);
 }
 
-void Texture::SetFilters(GLenum all) {
+void ScreenTexture::SetTexSubImage(GLsizei x, GLsizei y, GLsizei width, GLsizei height, GLenum format, const void* data) {
+	Bind();
+	glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, width, height, format, GL_UNSIGNED_BYTE, data);
+}
+
+void ScreenTexture::SetFilters(GLenum all) {
 	SetFilters(all, all);
 }
 
-void Texture::SetFilters(GLenum mag, GLenum min) {
+void ScreenTexture::SetFilters(GLenum mag, GLenum min) {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min);
 }
 
-void Texture::SetWrap(GLenum all) {
+void ScreenTexture::SetWrap(GLenum all) {
 	SetWrap(all, all);
 }
 
-void Texture::SetWrap(GLenum s, GLenum t) {
+void ScreenTexture::SetWrap(GLenum s, GLenum t) {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, s);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, t);
 }
 
-void Texture::Bind() {
+void ScreenTexture::Bind() {
 	glBindTexture(GL_TEXTURE_2D, tex);
 }

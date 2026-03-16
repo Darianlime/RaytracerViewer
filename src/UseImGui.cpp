@@ -33,6 +33,8 @@ void UseImGui::PostUpdate() {
     ImGui::PopStyleVar(3);
 
     ImGuiID dockSpaceId = ImGui::GetID("InvisibleWindowDockSpace");
+    ImGui::DockSpace(dockSpaceId, ImVec2(0, 0),
+        ImGuiDockNodeFlags_PassthruCentralNode);
     static bool first_time = true;
     if (first_time)
     {
@@ -53,16 +55,16 @@ void UseImGui::PostUpdate() {
 }
 
 void UseImGui::Update() {
-    if (ImGui::BeginMainMenuBar())
-    {
-        if (ImGui::BeginMenu("File"))
-        {
-            if (ImGui::MenuItem("Open..", "Ctrl+O")) { /* Do stuff */ }
-            if (ImGui::MenuItem("Save", "Ctrl+S")) { /* Do stuff */ }
-            ImGui::EndMenu();
-        }
-        ImGui::EndMainMenuBar();
-    }
+    //if (ImGui::BeginMainMenuBar())
+    //{
+    //    if (ImGui::BeginMenu("File"))
+    //    {
+    //        if (ImGui::MenuItem("Open..", "Ctrl+O")) { /* Do stuff */ }
+    //        if (ImGui::MenuItem("Save", "Ctrl+S")) { /* Do stuff */ }
+    //        ImGui::EndMenu();
+    //    }
+    //    ImGui::EndMainMenuBar();
+    //}
 }
 
 void UseImGui::Render() {

@@ -37,12 +37,14 @@ target_link_libraries(imgui PUBLIC
 )
 
 add_executable(RaytracerViewer
-    src/RaytracerViewer.cpp
+    src/main.cpp
     src/Screen.cpp
     src/UseImGui.cpp
-    src/Texture.cpp
+    src/ScreenTexture.cpp
     src/ViewportGui.cpp
     src/PropertiesGui.cpp
+    src/MenuGui.cpp
+    src/Application.cpp
 )
 
 target_include_directories(RaytracerViewer PRIVATE include)

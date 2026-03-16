@@ -1,12 +1,13 @@
-#ifndef PROPERTIES_GUI_H
-#define PROPERTIES_GUI_H
+#ifndef MENU_GUI_H
+#define MENU_GUI_H
 
 #include "UseImGui.h"
 #include "Factory/ObjectFactory.h"
 
-class PropertiesGui : public UseImGui {
+class MenuGui: public UseImGui {
+private:
 public:
-	PropertiesGui();
+	MenuGui();
 	void PostUpdate() override;
 	void Update(ObjectFactory& objectFactory);
 	void Update() override;

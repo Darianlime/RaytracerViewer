@@ -2,18 +2,26 @@
 #define VIEWPORTGUI_H
 
 #include "UseImGui.h"
-#include "Texture.h"
+#include "ScreenTexture.h"
 #include "raycast.h"
 #include "viewport.h"
 #include "camera.h"
+#include "Threads/ThreadSafeQueue.h"`
+
 #include <thread>
 #include <future>
-#include <queue>
 #include <atomic>
 #include <chrono>
 #include <algorithm>
 
 using namespace Raytracer;
+
+struct Tile {
+	int x;
+	int y;
+	int width;
+	int height;
+};
 
 class ViewportGui : public UseImGui {
 	private:
@@ -22,36 +30,34 @@ class ViewportGui : public UseImGui {
 		const int BLOCK_SIZE = 64;
 		const int RGB_STRIDE = 3;
 		int blocksCreated = 0;
-		atomic<int> blocksFinished = 0;
+		std::atomic<int> blocksFinished = 0;
 		int blockWidth = 0;
 		int blockHeight = 0;
 		int numThreads = 0;
-		atomic<bool> isRendering = true;
-		atomic<int> tilesRendered = 0;
-		atomic<int> rowsRendered = 0;
-		condition_variable cv;
-		mutex mtx;
+		std::atomic<bool> isRendering = true;
+		std::atomic<int> tilesRendered = 0;
+		std::atomic<int> rowsRendered = 0;
 		bool hasWork = false;
-		vector<future<void>> renderThreads;
-		vector<thread> renderWorkers;
-		void WorkerRenderer();
+		std::condition_variable cv;
+		std::mutex mtx;
+		ThreadSafeQueue<Tile> blockQueue;
+		vector<std::thread> renderWorkers;
+		void WorkerRenderer(ObjectFactory& objectFactory);
 
-
-
-		Texture viewportTexture;
+		ObjectFactory& objectFactory;
+		ScreenTexture screenTexture;
 		ImVec2 viewportSize;
 		ImVec2 lastViewportSize;
 		Raycast raycast;
 		Viewport viewport;
-		ObjectFactory objectFactory;
 		Camera camera;
 		std::vector<unsigned char> pixels;
 
 	public:
-		ViewportGui();
+		ViewportGui(ObjectFactory& objectFactory);
 		~ViewportGui();
 		void PostUpdate() override;
 		void Update() override;
-	};
+};
 
 #endif // !VIEWPORTGUI_H

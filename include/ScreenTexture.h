@@ -1,10 +1,10 @@
-#ifndef TEXTURE_H
-#define TEXTURE_H
+#ifndef SCREEN_TEXTURE_H
+#define SCREEN_TEXTURE_H
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-class Texture {
+class ScreenTexture {
 	private:
 		static int currentId;
 
@@ -13,14 +13,15 @@ class Texture {
 		int height;
 		int nChannels;
 	public:
-		Texture(bool defaultParams = true);
-		Texture(const char* path, const char* name, bool defaultParams = true);
+		ScreenTexture(bool defaultParams = true);
+		ScreenTexture(const char* path, const char* name, bool defaultParams = true);
 
 		void Generate();
 		void Load(bool flip = true);
 
 		void SetTexImage(GLint internalformat, GLsizei width, GLsizei height, GLenum format, const void* data);
 		void SetTexSubImage(GLsizei width, GLsizei height, GLenum format, const void* data);
+		void SetTexSubImage(GLsizei x, GLsizei y, GLsizei width, GLsizei height, GLenum format, const void* data);
 
 		void SetFilters(GLenum all);
 		void SetFilters(GLenum mag, GLenum min);
