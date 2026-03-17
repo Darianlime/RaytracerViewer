@@ -69,34 +69,65 @@ void ViewportGui::WorkerRenderer(ObjectFactory& objectFactory)
 	}
 }
 
-void ViewportGui::PostUpdate()
+void ViewportGui::StartRendering()
 {
+	// reset rows/tiles/blocks so worker threads will render the new frame
+	{
+		std::lock_guard<std::mutex> lock(mtx); // lock mutex to update hasWork and rowsRendered
+		rowsRendered = 0;
+		tilesRendered = 0;
+		blocksFinished = 0;
+		hasWork = true;
+	}
+	cv.notify_all();
+}
+
+void ViewportGui::OverrideRendering()
+{
+	// Prevent workers from starting new work and wait for current work to finish.
+	int oldBlockCount = blockWidth * blockHeight;
+	{
+		std::lock_guard<std::mutex> lock(mtx);
+		hasWork = false;
+	}
+	cv.notify_all();
+
+	// wait until all blocks from the previous frame are finished (or there was nothing)
+	if (oldBlockCount > 0) {
+		while (blocksFinished != oldBlockCount && isRendering) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		}
+	}
+
+	// clear leftover tiles
+	Tile tile;
+	while (blockQueue.try_pop(tile)) {}
+} 
+
+void ViewportGui::StopRendering() {
+	{
+		std::lock_guard<std::mutex> lock(mtx);
+		hasWork = false;
+	}
+	cv.notify_all();
+}
+
+void ViewportGui::PostUpdate(bool isUpdatingProperties)
+{
+	if (isUpdatingProperties) {
+		OverrideRendering(); // stop workers from rendering until we update the viewport and pixel buffer for the new frame
+		StartRendering(); // signal worker threads to start rendering the new frame
+	}
+
 	int newWidth = (int)viewportSize.x;
 	int newHeight = (int)viewportSize.y;
 
 	// CAN MAKE SO IF VIEWPORT SIZE CHANGES, THEN ONLY UPDATE THE PIXELS IN THE VIEWPORT
 	if ((newWidth != 0 && newHeight != 0) && (viewport.GetWidth() != newWidth || viewport.GetHeight() != newHeight)) {
-		std::cout << "in post " << std::endl;
+		std::cout << "in new height and width " << std::endl;
 		std::cout << newWidth << " " << newHeight << std::endl;
 
-		// Prevent workers from starting new work and wait for current work to finish.
-		int oldBlockCount = blockWidth * blockHeight;
-		{
-			std::lock_guard<std::mutex> lock(mtx);
-			hasWork = false;
-		}
-		cv.notify_all();
-
-		// wait until all blocks from the previous frame are finished (or there was nothing)
-		if (oldBlockCount > 0) {
-			while (blocksFinished != oldBlockCount && isRendering) {
-				std::this_thread::sleep_for(std::chrono::milliseconds(1));
-			}
-		}
-
-		// clear leftover tiles
-		Tile tile;
-		while (blockQueue.try_pop(tile)) {}
+		OverrideRendering(); // stop workers from rendering until we update the viewport and pixel buffer for the new frame
 
 		lastViewportSize = viewportSize;
 		viewport.SetWidthHeight(newWidth, newHeight);
@@ -105,29 +136,18 @@ void ViewportGui::PostUpdate()
 		pixels.resize(size * RGB_STRIDE, static_cast<unsigned char>(viewport.bkgcolor.r));
 
 		// Recompute block layout for the new frame and reset counters
-		blocksCreated = 0;
 		blockWidth = static_cast<int>(ceil(newWidth / static_cast<float>(BLOCK_SIZE)));
 		blockHeight = static_cast<int>(ceil(newHeight / static_cast<float>(BLOCK_SIZE)));
 		
-		// reset rows/tiles/blocks so worker threads will render the new frame
-		{
-			std::lock_guard<std::mutex> lock(mtx); // lock mutex to update hasWork and rowsRendered
-			rowsRendered = 0;
-			tilesRendered = 0;
-			blocksFinished = 0;
-			hasWork = true;
-		}
-		cv.notify_all();
+		// signal worker threads to start rendering the new frame
+		StartRendering();
 
 		// allocate memory for texture
 		screenTexture.SetTexImage(GL_RGB8, newWidth, newHeight, GL_RGB, nullptr);
 	}
 
 	if (blocksFinished.load() == blockWidth * blockHeight) {
-		{
-			std::lock_guard<std::mutex> lock(mtx); // lock mutex to update hasWork and rowsRendered
-			hasWork = false;
-		}
+		StopRendering(); // stop workers from rendering until next frame, since all blocks are finished
 	}
 
 	screenTexture.Bind();

@@ -10,6 +10,7 @@ void PropertiesGui::PostUpdate()
 
 void PropertiesGui::Update(ObjectFactory& objectFactory)
 {
+    isUpdating = false;
     ImGui::Begin("Properties");
     if (ImGui::CollapsingHeader("Camera"))
     {
@@ -21,6 +22,17 @@ void PropertiesGui::Update(ObjectFactory& objectFactory)
             std::string label = "Material " + std::to_string(i);
             if (ImGui::TreeNode(label.c_str())) {
 				ImGui::ColorEdit3("Diffuse", (float*)&mat.diffuse);
+                if (ImGui::IsItemDeactivatedAfterEdit()) isUpdating = true;
+
+                ImGui::ColorEdit3("Specular", (float*)&mat.specular);
+                if (ImGui::IsItemDeactivatedAfterEdit()) isUpdating = true;
+
+				ImGui::DragFloat3("Specular Coefficients", (float*)&mat.k, 0.01f, 0.0f, 1.0f);
+                if (ImGui::IsItemDeactivatedAfterEdit()) isUpdating = true;
+
+				ImGui::DragFloat("Shininess", &mat.n, 0.1f, 0.0f, 100.0f);
+                if (ImGui::IsItemDeactivatedAfterEdit()) isUpdating = true;
+
                 ImGui::Text("Diffuse: %.2f, %.2f, %.2f", mat.diffuse.r, mat.diffuse.g, mat.diffuse.b);
                 ImGui::Text("Specular: %.2f, %.2f, %.2f", mat.specular.r, mat.specular.g, mat.specular.b);
                 ImGui::Text("Specular Coefficients: %.2f, %.2f, %.2f", mat.k.x, mat.k.y, mat.k.z);

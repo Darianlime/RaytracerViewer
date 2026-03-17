@@ -26,7 +26,7 @@ int Application::Run() {
 		screen.Update();
 
 		ImGui.PostUpdate();
-		viewportGui.PostUpdate();
+		viewportGui.PostUpdate(propertiesGui.IsUpdating());
 
 		menuGui.Update(objectFactory);
 		propertiesGui.Update(objectFactory);

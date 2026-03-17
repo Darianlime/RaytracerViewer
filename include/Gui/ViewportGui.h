@@ -29,7 +29,6 @@ class ViewportGui : public UseImGui {
 
 		const int BLOCK_SIZE = 64;
 		const int RGB_STRIDE = 3;
-		int blocksCreated = 0;
 		std::atomic<int> blocksFinished = 0;
 		int blockWidth = 0;
 		int blockHeight = 0;
@@ -44,6 +43,10 @@ class ViewportGui : public UseImGui {
 		vector<std::thread> renderWorkers;
 		void WorkerRenderer(ObjectFactory& objectFactory);
 
+		void StartRendering();
+		void OverrideRendering();
+		void StopRendering();
+
 		ObjectFactory& objectFactory;
 		ScreenTexture screenTexture;
 		ImVec2 viewportSize;
@@ -56,7 +59,7 @@ class ViewportGui : public UseImGui {
 	public:
 		ViewportGui(ObjectFactory& objectFactory);
 		~ViewportGui();
-		void PostUpdate() override;
+		void PostUpdate(bool isUpdatingProperties);
 		void Update() override;
 };
 

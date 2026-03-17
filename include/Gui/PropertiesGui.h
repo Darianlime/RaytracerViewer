@@ -5,11 +5,15 @@
 #include "Factory/ObjectFactory.h"
 
 class PropertiesGui : public UseImGui {
+private:
+	bool isUpdating = false;
 public:
 	PropertiesGui();
 	void PostUpdate() override;
 	void Update(ObjectFactory& objectFactory);
 	void Update() override;
+
+	bool IsUpdating() const { return isUpdating; }
 
 };
 
