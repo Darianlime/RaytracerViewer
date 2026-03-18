@@ -43,9 +43,41 @@ void PropertiesGui::Update(ObjectFactory& objectFactory)
     }
     if (ImGui::CollapsingHeader("Objects"))
     {
-        /*for (auto& factory : objectFactory.GetFactoryMap()) {
-            objectFactory.
-        }*/
+		std::vector<std::unique_ptr<Mesh>>& meshes = objectFactory.GetFactory<MeshFactory>().GetObjects();
+        std::vector<std::unique_ptr<Light>>& lights = objectFactory.GetFactory<LightFactory>().GetObjects();
+        int i = 0;
+        for (unique_ptr<Mesh>& mesh : meshes) {
+            std::string label = mesh.get()->GetName() + std::to_string(i);
+            if (ImGui::TreeNode(label.c_str())) {
+                ImGui::DragFloat3("Position", (float*)&mesh->pos, 0.1f);
+                if (ImGui::IsItemDeactivatedAfterEdit()) isUpdating = true;
+
+                ImGui::DragInt("Material Index", &mesh->mat, 0.1f);
+                if (ImGui::IsItemDeactivatedAfterEdit()) isUpdating = true;
+
+                ImGui::Text("Material Index: %d", mesh->mat);
+                ImGui::Text("Texture Index: %d", mesh->tex);
+                ImGui::Text("Type: %s", Mesh::GetTypeMap()[mesh->type].c_str());
+                ImGui::TreePop();
+            }
+            i++;
+		}
+        int j = 0;
+        for (unique_ptr<Light>& light : lights) {
+            std::string label = light.get()->GetName() + std::to_string(i);
+            if (ImGui::TreeNode(label.c_str())) {
+                ImGui::DragFloat3("Position", (float*)&light->pos, 0.1f);
+                light->SetLightDir(light->pos);
+                if (ImGui::IsItemDeactivatedAfterEdit()) isUpdating = true;
+
+                ImGui::DragFloat("Intensity", &light->intensity, 0.1f);
+                if (ImGui::IsItemDeactivatedAfterEdit()) isUpdating = true;
+
+                ImGui::Text("Type: %s", Light::GetTypeMap()[light->type].c_str());
+                ImGui::TreePop();
+            }
+            j++;
+        }
 	}
     ImGui::End();
 }

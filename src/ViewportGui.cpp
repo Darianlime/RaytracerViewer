@@ -4,7 +4,12 @@ using std::min;
 using std::max;
 using std::numeric_limits;
 
-ViewportGui::ViewportGui(ObjectFactory &objectFactory) : viewportSize(0, 0), lastViewportSize(0,0), viewport(1, 1, Color(0.2f, 0.2f, 0.2f, false)), camera(Vec3(0.0f, 0.0f, 10.0f), Vec3(0.0f, 0.0f, -1.0f), Vec3(0.0f, 1.0f, 0.0f), 45), raycast(camera.GetEye()), pixels(1 * RGB_STRIDE, 0), objectFactory(objectFactory)
+ViewportGui::ViewportGui(ObjectFactory &objectFactory) : 
+	viewportSize(0, 0), 
+	lastViewportSize(0,0), 
+	viewport(1, 1, Color(0.2f, 0.2f, 0.2f, false)), 
+	camera(Vec3(0.0f, 0.0f, 10.0f), Vec3(0.0f, 0.0f, -1.0f), Vec3(0.0f, 1.0f, 0.0f), 45), raycast(camera.GetEye()), 
+	pixels(1 * RGB_STRIDE, 0), objectFactory(objectFactory)
 {
 	screenTexture.SetTexImage(GL_RGB, 1, 1, GL_RGB, nullptr);
 	numThreads = std::thread::hardware_concurrency() - 2;
@@ -30,6 +35,13 @@ void ViewportGui::WorkerRenderer(ObjectFactory& objectFactory)
 		std::unique_lock lock(mtx); // lock mutex to check hasWork and rowsRendered
 		cv.wait(lock, [this] { return hasWork || !isRendering; }); // wait until there is work to do or rendering is finished
 		lock.unlock(); // unlock mutex to allow other threads to check hasWork and rowsRendered
+
+		std::cout << objectFactory.GetFactory<MeshFactory>().GetObjects().size() << std::endl;
+		int i = 0;
+		for (auto& mesh : objectFactory.GetFactory<MeshFactory>().GetObjects()) {
+			std::cout << mesh->GetName() << i << std::endl;
+			i++;
+		}
 
 		while (true) {
 			int tileIndex = tilesRendered.fetch_add(1);

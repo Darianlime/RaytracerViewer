@@ -10,10 +10,8 @@ int Application::Run() {
 		return -1;
 	}
 	ObjectFactory objectFactory;
-	objectFactory.CreateFactory<MeshFactory>();
-	objectFactory.CreateFactory<LightFactory>();
 	objectFactory.AddMaterial(Material(Color(0.0f, 1.0f, 0.0f, false), Color(1.0f, 1.0f, 1.0f, false), Vec3(0.2f, 0.6f, 0.2f), 10));
-	std::vector<std::string> sphere = { "0.0f", "0.0f", "-8.0f", "4.0", "1", "-1" };
+	std::vector<std::string> sphere = { "0.0f", "0.0f", "-8.0f", "4.0", "0", "-1" };
 	objectFactory.GetFactoryMap()[typeid(MeshFactory)].get()->CreateObject(string("sphere"), sphere);
 
 	UseImGui ImGui;
@@ -26,7 +24,7 @@ int Application::Run() {
 		screen.Update();
 
 		ImGui.PostUpdate();
-		viewportGui.PostUpdate(propertiesGui.IsUpdating());
+		viewportGui.PostUpdate(propertiesGui.IsUpdating() || menuGui.IsUpdating());
 
 		menuGui.Update(objectFactory);
 		propertiesGui.Update(objectFactory);
