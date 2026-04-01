@@ -7,9 +7,9 @@ using std::numeric_limits;
 ViewportGui::ViewportGui(ObjectFactory &objectFactory) : 
 	viewportSize(0, 0), 
 	lastViewportSize(0,0), 
-	viewport(1, 1, Color(0.2f, 0.2f, 0.2f, false)), 
-	camera(Vec3(0.0f, 0.0f, 10.0f), Vec3(0.0f, 0.0f, -1.0f), Vec3(0.0f, 1.0f, 0.0f), 45), raycast(camera.GetEye()), 
-	pixels(1 * RGB_STRIDE, 0), objectFactory(objectFactory)
+	viewport(1, 1, Color(0.7f, 0.7f, 0.7f, false), 1.0f), 
+	pixels(1 * RGB_STRIDE, 0), 
+	objectFactory(objectFactory)
 {
 	screenTexture.SetTexImage(GL_RGB, 1, 1, GL_RGB, nullptr);
 	numThreads = std::thread::hardware_concurrency() - 2;
@@ -30,18 +30,13 @@ ViewportGui::~ViewportGui()
 
 void ViewportGui::WorkerRenderer(ObjectFactory& objectFactory)
 {
-	Raycast lRaycast(camera.GetEye());
+	Raycast lRaycast(objectFactory.GetCameras()[0].GetEye(), objectFactory);
 	while (isRendering) {
 		std::unique_lock lock(mtx); // lock mutex to check hasWork and rowsRendered
 		cv.wait(lock, [this] { return hasWork || !isRendering; }); // wait until there is work to do or rendering is finished
+		lRaycast.SetEye(objectFactory.GetCameras()[0].GetEye());
+		//std::cout << lRaycast.GetEye().x << " " << lRaycast.GetEye().y << " " << lRaycast.GetEye().z << std::endl;
 		lock.unlock(); // unlock mutex to allow other threads to check hasWork and rowsRendered
-
-		std::cout << objectFactory.GetFactory<MeshFactory>().GetObjects().size() << std::endl;
-		int i = 0;
-		for (auto& mesh : objectFactory.GetFactory<MeshFactory>().GetObjects()) {
-			std::cout << mesh->GetName() << i << std::endl;
-			i++;
-		}
 
 		while (true) {
 			int tileIndex = tilesRendered.fetch_add(1);
@@ -60,13 +55,13 @@ void ViewportGui::WorkerRenderer(ObjectFactory& objectFactory)
 
 			int endX = std::min(startX + BLOCK_SIZE, vw);
 			int endY = std::min(startY + BLOCK_SIZE, vh);
-
+			
 			pair<Vec3, bool> intersectedPoint(Vec3(numeric_limits<float>::infinity(), numeric_limits<float>::infinity(), numeric_limits<float>::infinity()), false);
 			for (int y = startY; y < endY; ++y) {
 				for (int x = startX; x < endX; ++x) {
 					intersectedPoint.first = Vec3(numeric_limits<float>::infinity(), numeric_limits<float>::infinity(), numeric_limits<float>::infinity());
 					intersectedPoint.second = false;
-					Color color = lRaycast.TraceRay(viewport.GetWindowLocation(x, y), viewport.bkgcolor, objectFactory, intersectedPoint);
+					Color color = lRaycast.TraceRay(viewport.GetWindowLocation(x, y), viewport.bkgcolor, intersectedPoint);
 					Color pixelColor = Color(color.GetVec(), true);
 					int pixelIndex = (y * vw + x) * RGB_STRIDE;
 					pixels[pixelIndex] = static_cast<unsigned char>(pixelColor.r);
@@ -77,6 +72,7 @@ void ViewportGui::WorkerRenderer(ObjectFactory& objectFactory)
 
 			blockQueue.push(Tile{ startX, startY, endX - startX, endY - startY });
 			blocksFinished.fetch_add(1);
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		}
 	}
 }
@@ -124,11 +120,15 @@ void ViewportGui::StopRendering() {
 	cv.notify_all();
 }
 
-void ViewportGui::PostUpdate(bool isUpdatingProperties)
+void ViewportGui::PostUpdate(int isUpdatingProperties)
 {
-	if (isUpdatingProperties) {
+	if (isUpdatingProperties > 0) {
 		OverrideRendering(); // stop workers from rendering until we update the viewport and pixel buffer for the new frame
+		if ((int)UpdateType::PROPERTIES_CAMERA == isUpdatingProperties) {
+			viewport.CalcWindowCorners(objectFactory.GetCameras()[0]);
+		}
 		StartRendering(); // signal worker threads to start rendering the new frame
+
 	}
 
 	int newWidth = (int)viewportSize.x;
@@ -143,7 +143,7 @@ void ViewportGui::PostUpdate(bool isUpdatingProperties)
 
 		lastViewportSize = viewportSize;
 		viewport.SetWidthHeight(newWidth, newHeight);
-		viewport.CalcWindowCorners(camera);
+		viewport.CalcWindowCorners(objectFactory.GetCameras()[0]);
 		int size = newWidth * newHeight;
 		pixels.resize(size * RGB_STRIDE, static_cast<unsigned char>(viewport.bkgcolor.r));
 

@@ -27,8 +27,8 @@ class ViewportGui : public UseImGui {
 	private:
 		bool start = true;
 
-		const int BLOCK_SIZE = 64;
-		const int RGB_STRIDE = 3;
+		const uint8_t BLOCK_SIZE = 64;
+		const uint8_t RGB_STRIDE = 3;
 		std::atomic<int> blocksFinished = 0;
 		int blockWidth = 0;
 		int blockHeight = 0;
@@ -51,15 +51,13 @@ class ViewportGui : public UseImGui {
 		ScreenTexture screenTexture;
 		ImVec2 viewportSize;
 		ImVec2 lastViewportSize;
-		Raycast raycast;
 		Viewport viewport;
-		Camera camera;
 		std::vector<unsigned char> pixels;
 
 	public:
 		ViewportGui(ObjectFactory& objectFactory);
 		~ViewportGui();
-		void PostUpdate(bool isUpdatingProperties);
+		void PostUpdate(int isUpdatingProperties);
 		void Update() override;
 };
 

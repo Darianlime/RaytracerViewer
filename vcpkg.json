@@ -1,8 +1,10 @@
 {
   "name": "vcpkg",
   "version": "1.0",
+  "builtin-baseline": "05442024c3fda64320bd25d2251cc9807b84fb6f",
   "dependencies": [
     "glfw3",
-    "glad"
+    "glad",
+    "pybind11"
   ]
 }

@@ -6,14 +6,14 @@
 
 class PropertiesGui : public UseImGui {
 private:
-	bool isUpdating = false;
+	int isUpdating;
 public:
 	PropertiesGui();
 	void PostUpdate() override;
 	void Update(ObjectFactory& objectFactory);
 	void Update() override;
 
-	bool IsUpdating() const { return isUpdating; }
+	int IsUpdating() const { return isUpdating; }
 
 };
 

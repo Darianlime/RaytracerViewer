@@ -10,6 +10,12 @@
 
 #include "Factory/ObjectFactory.h"
 
+enum UpdateType {
+	NONE = 0,
+	PROPERTIES_OBJECTS = 1 << 0,
+	PROPERTIES_CAMERA = 1 << 1
+};
+
 class UseImGui {
 	private:
 		ImVec4 color;

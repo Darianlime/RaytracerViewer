@@ -1,20 +1,46 @@
-﻿set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-cmake_minimum_required(VERSION 3.11)
+﻿cmake_minimum_required(VERSION 3.26)
 
+# Explicitly set vcpkg toolchain
 set(CMAKE_TOOLCHAIN_FILE
     "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/vcpkg/scripts/buildsystems/vcpkg.cmake"
     CACHE STRING "Vcpkg toolchain file"
 )
 
+# Project setup
 project(RaytracerViewer)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-message(STATUS "VCPKG_ROOT=${VCPKG_ROOT}")
+# Enable pybind11 new CMake API
+set(PYBIND11_FINDPYTHON ON)
+set(PYBIND11_USE_NEW_CMAKE_API ON)
 
+# Print vcpkg root
+message(STATUS "VCPKG_ROOT=$ENV{VCPKG_ROOT}")
+
+# Find packages
 find_package(glad CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
+find_package(Python3 COMPONENTS Development REQUIRED)
+find_package(pybind11 CONFIG REQUIRED)
 
+# Confirm targets found
+if(TARGET glfw)
+    message(STATUS "GLFW target found ✅")
+else()
+    message(FATAL_ERROR "GLFW NOT found ❌")
+endif()
+
+if(TARGET glad::glad)
+    message(STATUS "GLAD target found ✅")
+else()
+    message(FATAL_ERROR "GLAD NOT found ❌")
+endif()
+
+# -----------------------
+# ImGui library
+# -----------------------
 add_library(imgui
     ThirdParty/imgui/imgui.cpp
     ThirdParty/imgui/imgui_draw.cpp
@@ -32,10 +58,36 @@ target_include_directories(imgui PUBLIC
 target_compile_definitions(imgui PRIVATE IMGUI_IMPL_OPENGL_LOADER_GLAD)
 
 target_link_libraries(imgui PUBLIC
+    glad::glad
     glfw
     OpenGL::GL
 )
 
+# -----------------------
+# RaytracerCore
+# -----------------------
+set(RAYTRACER_BUILD_APP OFF CACHE BOOL "" FORCE)
+add_subdirectory(ThirdParty/RaytracerCore/RaytracingCore)
+
+# -----------------------
+# Python bindings
+# -----------------------
+pybind11_add_module(raytracer_bindings
+    bindings/bindings.cpp
+)
+target_link_libraries(raytracer_bindings PRIVATE lib)
+
+# Make sure .pyd lands next to RaytracerViewer.exe
+set_target_properties(raytracer_bindings PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG   "${CMAKE_BINARY_DIR}/Debug"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/Release"
+    LIBRARY_OUTPUT_DIRECTORY_DEBUG   "${CMAKE_BINARY_DIR}/Debug"
+    LIBRARY_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/Release"
+)
+
+# -----------------------
+# Main application
+# -----------------------
 add_executable(RaytracerViewer
     src/main.cpp
     src/Screen.cpp
@@ -47,15 +99,13 @@ add_executable(RaytracerViewer
     src/Application.cpp
 )
 
+# Explicit include directories for VS
 target_include_directories(RaytracerViewer PRIVATE include)
 
+# Link libraries
 target_link_libraries(RaytracerViewer PRIVATE
-    glad::glad
-    glfw
+    lib
     imgui
 )
 
-set(RAYTRACER_BUILD_APP OFF CACHE BOOL "" FORCE)
-
-add_subdirectory(ThirdParty/RaytracerCore/RaytracingCore)
-target_link_libraries(RaytracerViewer PRIVATE lib)
+add_dependencies(RaytracerViewer raytracer_bindings)

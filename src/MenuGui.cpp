@@ -29,7 +29,7 @@ void MenuGui::Update(ObjectFactory& objectFactory)
                     if (ImGui::MenuItem(label.c_str(), shortcut.c_str())) {
 				        std::cout << "creating object: " << std::endl;
 					    factory.second->CreateObject(factory.second->GetTypeIndex(i), std::vector<std::string>());
-						isUpdating = true;
+						isUpdating = UpdateType::PROPERTIES_OBJECTS;
                     }
                 }
 		    }
