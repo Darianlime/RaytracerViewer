@@ -11,10 +11,6 @@ project(RaytracerViewer)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Enable pybind11 new CMake API
-set(PYBIND11_FINDPYTHON ON)
-set(PYBIND11_USE_NEW_CMAKE_API ON)
-
 # Print vcpkg root
 message(STATUS "VCPKG_ROOT=$ENV{VCPKG_ROOT}")
 
@@ -22,8 +18,10 @@ message(STATUS "VCPKG_ROOT=$ENV{VCPKG_ROOT}")
 find_package(glad CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
-find_package(Python3 COMPONENTS Development REQUIRED)
-find_package(pybind11 CONFIG REQUIRED)
+find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
+
+add_subdirectory(ThirdParty/pybind11)
 
 # Confirm targets found
 if(TARGET glfw)
@@ -36,6 +34,12 @@ if(TARGET glad::glad)
     message(STATUS "GLAD target found ✅")
 else()
     message(FATAL_ERROR "GLAD NOT found ❌")
+endif()
+
+if(TARGET nlohmann_json)
+    message(STATUS "nlohmann_json target found ✅")
+else()
+    message(FATAL_ERROR "nlohmann_json NOT found ❌")
 endif()
 
 # -----------------------
@@ -97,6 +101,7 @@ add_executable(RaytracerViewer
     src/PropertiesGui.cpp
     src/MenuGui.cpp
     src/Application.cpp
+    src/RaytracerAPI.cpp
 )
 
 # Explicit include directories for VS
@@ -106,6 +111,7 @@ target_include_directories(RaytracerViewer PRIVATE include)
 target_link_libraries(RaytracerViewer PRIVATE
     lib
     imgui
+    nlohmann_json::nlohmann_json
 )
 
 add_dependencies(RaytracerViewer raytracer_bindings)
