@@ -18,10 +18,6 @@ message(STATUS "VCPKG_ROOT=$ENV{VCPKG_ROOT}")
 find_package(glad CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
-find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
-find_package(nlohmann_json CONFIG REQUIRED)
-
-add_subdirectory(ThirdParty/pybind11)
 
 # Confirm targets found
 if(TARGET glfw)
@@ -34,12 +30,6 @@ if(TARGET glad::glad)
     message(STATUS "GLAD target found ✅")
 else()
     message(FATAL_ERROR "GLAD NOT found ❌")
-endif()
-
-if(TARGET nlohmann_json)
-    message(STATUS "nlohmann_json target found ✅")
-else()
-    message(FATAL_ERROR "nlohmann_json NOT found ❌")
 endif()
 
 # -----------------------
@@ -74,22 +64,6 @@ set(RAYTRACER_BUILD_APP OFF CACHE BOOL "" FORCE)
 add_subdirectory(ThirdParty/RaytracerCore/RaytracingCore)
 
 # -----------------------
-# Python bindings
-# -----------------------
-pybind11_add_module(raytracer_bindings
-    bindings/bindings.cpp
-)
-target_link_libraries(raytracer_bindings PRIVATE lib)
-
-# Make sure .pyd lands next to RaytracerViewer.exe
-set_target_properties(raytracer_bindings PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY_DEBUG   "${CMAKE_BINARY_DIR}/Debug"
-    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/Release"
-    LIBRARY_OUTPUT_DIRECTORY_DEBUG   "${CMAKE_BINARY_DIR}/Debug"
-    LIBRARY_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/Release"
-)
-
-# -----------------------
 # Main application
 # -----------------------
 add_executable(RaytracerViewer
@@ -101,7 +75,7 @@ add_executable(RaytracerViewer
     src/PropertiesGui.cpp
     src/MenuGui.cpp
     src/Application.cpp
-    src/RaytracerAPI.cpp
+    src/Keyboard.cpp
 )
 
 # Explicit include directories for VS
@@ -111,7 +85,4 @@ target_include_directories(RaytracerViewer PRIVATE include)
 target_link_libraries(RaytracerViewer PRIVATE
     lib
     imgui
-    nlohmann_json::nlohmann_json
 )
-
-add_dependencies(RaytracerViewer raytracer_bindings)

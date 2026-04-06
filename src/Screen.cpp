@@ -1,4 +1,5 @@
 #include "Screen.h"
+#include "io/Keyboard.h"
 
 unsigned int Screen::SCR_WIDTH = 800;
 unsigned int Screen::SCR_HEIGHT = 600;
@@ -55,7 +56,7 @@ void Screen::GetMonitorSizeGLFW(GLFWmonitor* monitor, const GLFWvidmode* mode, u
 void Screen::SetParameters() {
 	glfwSetFramebufferSizeCallback(window, Screen::framebufferSizeCallback);
 
-	/*glfwSetKeyCallback(window, Keyboard::keyCallback);*/
+	glfwSetKeyCallback(window, Keyboard::keyCallback);
 
 	/*glfwSetCursorPosCallback(window, Mouse::cursorPosCallback);
 	glfwSetMouseButtonCallback(window, Mouse::mouseButtonCallback);

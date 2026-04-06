@@ -1,4 +1,5 @@
 #include "Application.h"
+#include "io/Keyboard.h"
 
 Application::Application() {}
 
@@ -30,6 +31,11 @@ int Application::Run() {
 	MenuGui menuGui;
 	ImGui.Init(screen.GetWindow());
 	while (!screen.ShouldClose()) {
+		if (Keyboard::Key(GLFW_KEY_ESCAPE)) {
+			printf("in escape\n");
+			screen.SetShouldClose(true);
+		}
+
 		screen.NewFrame();
 		screen.Update();
 
@@ -45,7 +51,6 @@ int Application::Run() {
 
 	}
 	ImGui.Shutdown();
-	viewportGui.Shutdown();
 	glfwTerminate();
 
 	return 0;
