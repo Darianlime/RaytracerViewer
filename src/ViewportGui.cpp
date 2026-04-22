@@ -30,7 +30,7 @@ ViewportGui::~ViewportGui()
 
 void ViewportGui::WorkerRenderer(ObjectFactory& objectFactory)
 {
-	Raycast lRaycast(objectFactory.GetCameras()[0].GetEye(), objectFactory);
+	Raycast lRaycast(objectFactory.GetCameras()[0].GetEye(), objectFactory, 4);
 	while (isRendering) {
 		std::unique_lock lock(mtx); // lock mutex to check hasWork and rowsRendered
 		cv.wait(lock, [this] { return hasWork || !isRendering; }); // wait until there is work to do or rendering is finished
@@ -120,17 +120,36 @@ void ViewportGui::StopRendering() {
 	cv.notify_all();
 }
 
-void ViewportGui::PostUpdate(int isUpdatingProperties)
+void ViewportGui::PropertiesUpdate(int isUpdatingProperties, int index)
 {
 	if (isUpdatingProperties > 0) {
 		OverrideRendering(); // stop workers from rendering until we update the viewport and pixel buffer for the new frame
-		if ((int)UpdateType::PROPERTIES_CAMERA == isUpdatingProperties) {
-			viewport.CalcWindowCorners(objectFactory.GetCameras()[0]);
+		switch (isUpdatingProperties) {
+			case (int)UpdateType::PROPERTIES_CAMERA:
+				viewport.CalcWindowCorners(objectFactory.GetCameras()[0]);
+				break;
+			case (int)UpdateType::DELETING_MATERIAL:
+				objectFactory.RemoveMaterial(index);
+				break;
+			case (int)UpdateType::DELETING_LIGHT: {
+				LightFactory& lights = objectFactory.GetFactory<LightFactory>();
+				lights.RemoveLight(index);
+			}
+			break;
+			case (int)UpdateType::DELETING_MODEL: {
+				ModelFactory& models = objectFactory.GetFactory<ModelFactory>();
+				models.RemoveModel(index);
+			}
+			break;
+			default:
+				break;
 		}
 		StartRendering(); // signal worker threads to start rendering the new frame
-
 	}
+}
 
+void ViewportGui::PostUpdate()
+{
 	int newWidth = (int)viewportSize.x;
 	int newHeight = (int)viewportSize.y;
 

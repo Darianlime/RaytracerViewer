@@ -11,6 +11,7 @@ void PropertiesGui::PostUpdate()
 void PropertiesGui::Update(ObjectFactory& objectFactory)
 {
     isUpdating = 0;
+	updatingIndex = -1;
     ImGui::Begin("Properties");
     if (ImGui::CollapsingHeader("Camera")) {
 		Raytracer::Camera& cam = objectFactory.GetCameraIndex(0);
@@ -45,41 +46,54 @@ void PropertiesGui::Update(ObjectFactory& objectFactory)
 
                 ImGui::DragFloat("Index of Refraction", &mat.refractionIndex, 0.1f, 1.0f, 4.1f);
                 if (ImGui::IsItemDeactivatedAfterEdit()) isUpdating = UpdateType::PROPERTIES_OBJECTS;
+
+                if (ImGui::Button("Delete Material")) {
+					updatingIndex = i;
+                    isUpdating = UpdateType::DELETING_MATERIAL;
+                }
+
                 ImGui::TreePop();
             }
 		}
         if (ImGui::Button("Add Material")) {
 			std::cout << "adding material" << std::endl;
 			objectFactory.AddMaterial(Material(Color(0.2f, 1.0f, 0.2f, false), Color(1.0f, 1.0f, 1.0f, false), Vec3(0.2f, 0.6f, 0.0f), 100, Color(1.0f, 1.0f, 1.0f, false), 1.0f));
+            isUpdating = UpdateType::PROPERTIES_OBJECTS;
         }
     }
     if (ImGui::CollapsingHeader("Objects"))
     {
-		std::vector<std::unique_ptr<Mesh>>& meshes = objectFactory.GetFactory<MeshFactory>().GetObjects();
-        std::vector<std::unique_ptr<Light>>& lights = objectFactory.GetFactory<LightFactory>().GetObjects();
+        ModelFactory& models = objectFactory.GetFactory<ModelFactory>();
+        LightFactory& lights = objectFactory.GetFactory<LightFactory>();
         int i = 0;
-        for (unique_ptr<Mesh>& mesh : meshes) {
-            std::string label = mesh.get()->GetName() + std::to_string(i);
+        for (unique_ptr<Model>& model : models.GetObjects()) {
+			if (!model) continue;
+            std::string label = model.get()->GetName() + std::to_string(i);
             if (ImGui::TreeNode(label.c_str())) {
-                ImGui::DragFloat3("Position", (float*)&mesh->pos, 0.1f);
-                if (ImGui::IsItemDeactivatedAfterEdit()) isUpdating = UpdateType::PROPERTIES_OBJECTS;
+                ImGui::DragFloat3("Position", (float*)&model->pos, 0.1f);
+                if (ImGui::IsItemDeactivatedAfterEdit()) { model->UpdateTransformation(); isUpdating = UpdateType::PROPERTIES_OBJECTS; }
 
-                ImGui::DragFloat3("Rotation", (float*)&mesh->rot, 0.1f);
-                if (ImGui::IsItemDeactivatedAfterEdit()) isUpdating = UpdateType::PROPERTIES_OBJECTS;
+                ImGui::DragFloat3("Rotation", (float*)&model->rot, 0.1f);
+                if (ImGui::IsItemDeactivatedAfterEdit()) { model->UpdateTransformation(); isUpdating = UpdateType::PROPERTIES_OBJECTS; }
 
-                ImGui::DragFloat3("Size", (float*)&mesh->size, 0.1f);
-                if (ImGui::IsItemDeactivatedAfterEdit()) isUpdating = UpdateType::PROPERTIES_OBJECTS;
+                ImGui::DragFloat3("Size", (float*)&model->size, 0.1f);
+                if (ImGui::IsItemDeactivatedAfterEdit()) { model->UpdateTransformation(); isUpdating = UpdateType::PROPERTIES_OBJECTS; }
 
-                ImGui::DragInt("Material Index", &mesh->mat, 0.1f);
-                if (ImGui::IsItemDeactivatedAfterEdit()) isUpdating = UpdateType::PROPERTIES_OBJECTS;
+                ImGui::DragInt("Material Index", &model->mat, 0.1f);
+                if (ImGui::IsItemDeactivatedAfterEdit()) { model->UpdateTransformation(); isUpdating = UpdateType::PROPERTIES_OBJECTS; }
+
+                if (ImGui::Button("Delete Model")) {
+					updatingIndex = i;
+					isUpdating = UpdateType::DELETING_MODEL;
+                }
 
                 ImGui::TreePop();
             }
             i++;
 		}
         int j = 0;
-        for (unique_ptr<Light>& light : lights) {
-            std::string label = light.get()->GetName() + std::to_string(i);
+        for (unique_ptr<Light>& light : lights.GetObjects()) {
+            std::string label = light.get()->GetName() + std::to_string(j);
             if (ImGui::TreeNode(label.c_str())) {
                 ImGui::DragFloat3("Position", (float*)&light->pos, 0.1f);
                 light->SetLightDir(light->pos);
@@ -89,7 +103,12 @@ void PropertiesGui::Update(ObjectFactory& objectFactory)
                 if (ImGui::IsItemDeactivatedAfterEdit()) isUpdating = UpdateType::PROPERTIES_OBJECTS;
 
                 ImGui::Text("Type: %s", Light::GetTypeMap()[light->type].c_str());
+                if (ImGui::Button("Delete Light")) {
+					updatingIndex = j;
+                    isUpdating = UpdateType::DELETING_LIGHT;
+                }
                 ImGui::TreePop();
+
             }
             j++;
         }

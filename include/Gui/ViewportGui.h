@@ -57,7 +57,8 @@ class ViewportGui : public UseImGui {
 	public:
 		ViewportGui(ObjectFactory& objectFactory);
 		~ViewportGui();
-		void PostUpdate(int isUpdatingProperties);
+		void PostUpdate();
+		void PropertiesUpdate(int isUpdatingProperties, int index);
 		void Update() override;
 };
 

@@ -7,6 +7,7 @@
 class PropertiesGui : public UseImGui {
 private:
 	int isUpdating;
+	int updatingIndex;
 public:
 	PropertiesGui();
 	void PostUpdate() override;
@@ -14,6 +15,7 @@ public:
 	void Update() override;
 
 	int IsUpdating() const { return isUpdating; }
+	int GetUpdatingIndex() const { return updatingIndex; }
 
 };
 
