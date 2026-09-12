@@ -82,6 +82,9 @@ void PropertiesGui::Update(ObjectFactory& objectFactory)
                 ImGui::DragInt("Material Index", &model->mat, 0.1f);
                 if (ImGui::IsItemDeactivatedAfterEdit()) { model->UpdateTransformation(); isUpdating = UpdateType::PROPERTIES_OBJECTS; }
 
+                ImGui::Checkbox("Smooth Shading", &model->isSmoothShadingOn);
+                if (ImGui::IsItemDeactivatedAfterEdit()) { model->UpdateTransformation(); isUpdating = UpdateType::PROPERTIES_OBJECTS; }
+
                 if (ImGui::Button("Delete Model")) {
 					updatingIndex = i;
 					isUpdating = UpdateType::DELETING_MODEL;

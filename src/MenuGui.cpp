@@ -15,8 +15,6 @@ void MenuGui::Update(ObjectFactory& objectFactory)
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File"))
         {
-            if (ImGui::MenuItem("Open..", "Ctrl+O")) { /* Do stuff */ }
-            if (ImGui::MenuItem("Save", "Ctrl+S")) { /* Do stuff */ }
 			if (ImGui::MenuItem("Import OBJ", "Ctrl+Shift+I")) { 
                 if (OpenFile("OBJ Files\0*.obj\0""\0")) {
                     objectFactory.GetFactory<ModelFactory>().ResetCurrentVertexStart();
@@ -28,7 +26,7 @@ void MenuGui::Update(ObjectFactory& objectFactory)
                     for (int i = intialSize; i < updatedSize; i++) {
 						Model* model = objectFactory.GetFactory<ModelFactory>().GetObjects()[i].get();
 						for (auto& vertex : model->GetOrgVertices()) {
-							vertex = vertex - model->pos; // Center the model at the origin
+							vertex.pos = vertex.pos - model->pos; // Center the model at the origin
 						}
 						std::cout << "model pos: " << model->pos.x << ", " << model->pos.y << ", " << model->pos.z << std::endl;
                         model->rot.ToString();
@@ -40,6 +38,13 @@ void MenuGui::Update(ObjectFactory& objectFactory)
                     isUpdating = UpdateType::PROPERTIES_OBJECTS;
                 }
             }
+			if (ImGui::MenuItem("Export PPM Image", "Ctrl+Shift+E")) {
+                if (SaveFile("All Files\0*.*\0""\0")) {
+                    std::cout << "Exporting image to: " << path << std::endl;
+					
+                }
+            }
+			if (ImGui::MenuItem("Exit", "Alt+F4")) { /* Do stuff */ }
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Objects"))
@@ -88,6 +93,34 @@ bool MenuGui::OpenFile(const char* filter)
         return true;
     }
 	return false;
+}
+
+bool MenuGui::SaveFile(const char* filter)
+{
+    OPENFILENAME ofn;
+    char fileName[512]{};
+    //const char filters[] =
+    //    "All Files\0*.*\0"
+    //    "OBJ Files\0*.obj\0"
+    //    "\0";
+
+    ZeroMemory(&ofn, sizeof(OPENFILENAME));
+
+    ofn.lStructSize = sizeof(OPENFILENAME);
+    ofn.hwndOwner = hwnd;
+    ofn.lpstrFile = fileName;
+    ofn.lpstrFile[0] = '\0';
+    ofn.nMaxFile = 512;
+    ofn.lpstrFilter = filter;
+    ofn.nFilterIndex = 2;
+    ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST;
+
+    if (GetSaveFileName(&ofn)) {
+        path = fileName;
+        std::cout << "Selected Save File: " << path << std::endl;
+        return true;
+    }
+    return false;
 }
 
 void MenuGui::Update()

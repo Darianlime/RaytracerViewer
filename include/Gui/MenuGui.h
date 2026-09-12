@@ -17,6 +17,7 @@ public:
 	void Update(ObjectFactory& objectFactory);
 	void Update() override;
 	bool OpenFile(const char* filter);
+	bool SaveFile(const char* filter);
 
 	int IsUpdating() const { return isUpdating; }
 };

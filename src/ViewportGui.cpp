@@ -120,6 +120,21 @@ void ViewportGui::StopRendering() {
 	cv.notify_all();
 }
 
+void ViewportGui::MenuUpdate(int isUpdatingProperties, std::string path)
+{
+	if (isUpdatingProperties > 0) {
+		OverrideRendering(); // stop workers from rendering until we update the viewport and pixel buffer for the new frame
+		switch (isUpdatingProperties) {
+		case (int)UpdateType::PROPERTIES_CAMERA:
+			
+			break;
+		default:
+			break;
+		}
+		StartRendering(); // signal worker threads to start rendering the new frame
+	}
+}
+
 void ViewportGui::PropertiesUpdate(int isUpdatingProperties, int index)
 {
 	if (isUpdatingProperties > 0) {

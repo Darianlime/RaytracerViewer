@@ -59,6 +59,7 @@ class ViewportGui : public UseImGui {
 		~ViewportGui();
 		void PostUpdate();
 		void PropertiesUpdate(int isUpdatingProperties, int index);
+		void MenuUpdate(int isUpdatingProperties, std::string path);
 		void Update() override;
 };
 
