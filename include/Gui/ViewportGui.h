@@ -13,6 +13,7 @@
 #include <atomic>
 #include <chrono>
 #include <algorithm>
+#include "GUIState.h"
 
 using namespace Raytracer;
 
@@ -27,7 +28,7 @@ class ViewportGui : public UseImGui {
 	private:
 		bool start = true;
 
-		const uint8_t BLOCK_SIZE = 64;
+		const uint8_t BLOCK_SIZE = 32;
 		const uint8_t RGB_STRIDE = 3;
 		std::atomic<int> blocksFinished = 0;
 		int blockWidth = 0;
@@ -37,6 +38,8 @@ class ViewportGui : public UseImGui {
 		std::atomic<int> tilesRendered = 0;
 		std::atomic<int> rowsRendered = 0;
 		bool hasWork = false;
+		bool uploadedThisFrame = false;
+
 		std::condition_variable cv;
 		std::mutex mtx;
 		ThreadSafeQueue<Tile> blockQueue;
@@ -48,6 +51,7 @@ class ViewportGui : public UseImGui {
 		void StopRendering();
 
 		ObjectFactory& objectFactory;
+		UpdateGUIState& updateGUIState;
 		ScreenTexture screenTexture;
 		ImVec2 viewportSize;
 		ImVec2 lastViewportSize;
@@ -55,10 +59,10 @@ class ViewportGui : public UseImGui {
 		std::vector<unsigned char> pixels;
 
 	public:
-		ViewportGui(ObjectFactory& objectFactory);
+		ViewportGui(ObjectFactory& objectFactory, UpdateGUIState& updateState);
 		~ViewportGui();
 		void PostUpdate();
-		void PropertiesUpdate(int isUpdatingProperties, int index);
+		void PropertiesUpdate();
 		void MenuUpdate(int isUpdatingProperties, std::string path);
 		void Update() override;
 };

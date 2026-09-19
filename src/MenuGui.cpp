@@ -1,8 +1,10 @@
 #include "Gui/MenuGui.h"
 #include <file.h>
 #include <stdexcept>
+#include <chrono>
+#include <cmath>
 
-MenuGui::MenuGui(HWND hwnd) : hwnd(hwnd), isUpdating(0) {}
+MenuGui::MenuGui(HWND hwnd, UpdateGUIState& updateState) : hwnd(hwnd), updateState(updateState) {}
 
 void MenuGui::PostUpdate()
 {
@@ -11,7 +13,6 @@ void MenuGui::PostUpdate()
 
 void MenuGui::Update(ObjectFactory& objectFactory)
 {
-	isUpdating = false;
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File"))
         {
@@ -35,7 +36,7 @@ void MenuGui::Update(ObjectFactory& objectFactory)
                         model->GetBVH().Build();
 						model->localToWorld.ToString();
                     }
-                    isUpdating = UpdateType::PROPERTIES_OBJECTS;
+                    updateState.updateType = UpdateType::CREATING_OBJECT;
                 }
             }
 			if (ImGui::MenuItem("Export PPM Image", "Ctrl+Shift+E")) {
@@ -57,7 +58,7 @@ void MenuGui::Update(ObjectFactory& objectFactory)
                     if (ImGui::MenuItem(label.c_str(), shortcut.c_str())) {
 				        std::cout << "creating object: " << std::endl;
 					    factory.second->CreateObject(factory.second->GetTypeIndex(i), std::vector<std::string>());
-						isUpdating = UpdateType::PROPERTIES_OBJECTS;
+						updateState.updateType = UpdateType::CREATING_OBJECT;
                     }
                 }
 		    }

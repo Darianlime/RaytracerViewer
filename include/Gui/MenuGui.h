@@ -5,21 +5,20 @@
 #include "Factory/ObjectFactory.h"
 
 #include "windows.h"
+#include "GUIState.h"
 
 class MenuGui: public UseImGui {
 private:
-	int isUpdating;
+	UpdateGUIState& updateState;
 	HWND hwnd;
 	string path = "";
 public:
-	MenuGui(HWND hwnd);
+	MenuGui(HWND hwnd, UpdateGUIState& updateState);
 	void PostUpdate() override;
 	void Update(ObjectFactory& objectFactory);
 	void Update() override;
 	bool OpenFile(const char* filter);
 	bool SaveFile(const char* filter);
-
-	int IsUpdating() const { return isUpdating; }
 };
 
 #endif // !PROPERTIES_GUI_H

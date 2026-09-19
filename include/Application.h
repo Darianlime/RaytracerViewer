@@ -4,6 +4,7 @@
 #include "Gui/ViewportGui.h"
 #include "Gui/PropertiesGui.h"
 #include "Gui/MenuGui.h"
+#include "Gui/TimelineGui.h"
 #include "Screen.h"
 #include <iostream>
 

@@ -3,19 +3,16 @@
 
 #include "UseImGui.h"
 #include "Factory/ObjectFactory.h"
+#include "GUIState.h"
 
 class PropertiesGui : public UseImGui {
 private:
-	int isUpdating;
-	int updatingIndex;
+	UpdateGUIState& updateState;
 public:
-	PropertiesGui();
+	PropertiesGui(UpdateGUIState& updateState);
 	void PostUpdate() override;
 	void Update(ObjectFactory& objectFactory);
 	void Update() override;
-
-	int IsUpdating() const { return isUpdating; }
-	int GetUpdatingIndex() const { return updatingIndex; }
 
 };
 

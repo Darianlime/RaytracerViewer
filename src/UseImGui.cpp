@@ -43,10 +43,16 @@ void UseImGui::PostUpdate() {
 		ImGui::DockBuilderAddNode(dockSpaceId, ImGuiDockNodeFlags_PassthruCentralNode);
         ImGui::DockBuilderSetNodeSize(dockSpaceId, viewport->Size);
 
+        ImGuiID dockIdObjects;
+        ImGuiID dockIdProperties;
 		ImGuiID dockIdLeft = ImGui::DockBuilderSplitNode(dockSpaceId, ImGuiDir_Left, 0.25f, nullptr, &dockSpaceId);
+        ImGuiID dockIdBottom = ImGui::DockBuilderSplitNode(dockSpaceId, ImGuiDir_Down, 0.25f, nullptr, &dockSpaceId);
+        ImGui::DockBuilderSplitNode(dockIdLeft, ImGuiDir_Up, 0.30f, &dockIdObjects, &dockIdProperties);
 
         ImGui::DockBuilderDockWindow("Viewport", dockSpaceId);
-        ImGui::DockBuilderDockWindow("Properties", dockIdLeft);
+        ImGui::DockBuilderDockWindow("Properties", dockIdProperties);
+        ImGui::DockBuilderDockWindow("Objects", dockIdObjects);
+        ImGui::DockBuilderDockWindow("Timeline", dockIdBottom);
 
 		ImGui::DockBuilderFinish(dockSpaceId);
     }

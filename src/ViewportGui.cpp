@@ -4,15 +4,18 @@ using std::min;
 using std::max;
 using std::numeric_limits;
 
-ViewportGui::ViewportGui(ObjectFactory &objectFactory) : 
+ViewportGui::ViewportGui(ObjectFactory &objectFactory, UpdateGUIState& updateState) : 
 	viewportSize(0, 0), 
 	lastViewportSize(0,0), 
 	viewport(1, 1, Color(0.7f, 0.7f, 0.7f, false), 1.0f), 
 	pixels(1 * RGB_STRIDE, 0), 
-	objectFactory(objectFactory)
+	objectFactory(objectFactory),
+	updateGUIState(updateState)
 {
 	screenTexture.SetTexImage(GL_RGB, 1, 1, GL_RGB, nullptr);
-	numThreads = std::thread::hardware_concurrency() - 2;
+	numThreads = std::thread::hardware_concurrency()-2;
+
+	std::cout << "Using " << numThreads << " threads for rendering." << std::endl;
 	for (int i = 0; i < numThreads; i++) {
 		renderWorkers.emplace_back(&ViewportGui::WorkerRenderer, this, std::ref(this->objectFactory));
 	}
@@ -41,6 +44,7 @@ void ViewportGui::WorkerRenderer(ObjectFactory& objectFactory)
 		while (true) {
 			int tileIndex = tilesRendered.fetch_add(1);
 			if (tileIndex >= blockWidth * blockHeight) {
+				std::this_thread::yield();
 				break;
 			}
 
@@ -70,23 +74,25 @@ void ViewportGui::WorkerRenderer(ObjectFactory& objectFactory)
 				}
 			}
 
-			blockQueue.push(Tile{ startX, startY, endX - startX, endY - startY });
+			//blockQueue.push(Tile{ startX, startY, endX - startX, endY - startY });
 			blocksFinished.fetch_add(1);
-			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		}
 	}
 }
+
+std::chrono::high_resolution_clock::time_point renderStartTime;
 
 void ViewportGui::StartRendering()
 {
 	// reset rows/tiles/blocks so worker threads will render the new frame
 	{
 		std::lock_guard<std::mutex> lock(mtx); // lock mutex to update hasWork and rowsRendered
-		rowsRendered = 0;
 		tilesRendered = 0;
 		blocksFinished = 0;
 		hasWork = true;
 	}
+	renderStartTime = std::chrono::high_resolution_clock::now();
+	uploadedThisFrame = false; // reset so we can upload the new frame once it's done
 	cv.notify_all();
 }
 
@@ -135,25 +141,25 @@ void ViewportGui::MenuUpdate(int isUpdatingProperties, std::string path)
 	}
 }
 
-void ViewportGui::PropertiesUpdate(int isUpdatingProperties, int index)
+void ViewportGui::PropertiesUpdate()
 {
-	if (isUpdatingProperties > 0) {
+	if (updateGUIState.updateType > 0) {
 		OverrideRendering(); // stop workers from rendering until we update the viewport and pixel buffer for the new frame
-		switch (isUpdatingProperties) {
+		switch (updateGUIState.updateType) {
 			case (int)UpdateType::PROPERTIES_CAMERA:
 				viewport.CalcWindowCorners(objectFactory.GetCameras()[0]);
 				break;
 			case (int)UpdateType::DELETING_MATERIAL:
-				objectFactory.RemoveMaterial(index);
+				objectFactory.RemoveMaterial(updateGUIState.deletingIndex);
 				break;
 			case (int)UpdateType::DELETING_LIGHT: {
 				LightFactory& lights = objectFactory.GetFactory<LightFactory>();
-				lights.RemoveLight(index);
+				lights.RemoveLight(updateGUIState.deletingIndex);
 			}
 			break;
 			case (int)UpdateType::DELETING_MODEL: {
 				ModelFactory& models = objectFactory.GetFactory<ModelFactory>();
-				models.RemoveModel(index);
+				models.RemoveModel(updateGUIState.deletingIndex);
 			}
 			break;
 			default:
@@ -192,30 +198,58 @@ void ViewportGui::PostUpdate()
 		screenTexture.SetTexImage(GL_RGB8, newWidth, newHeight, GL_RGB, nullptr);
 	}
 
-	if (blocksFinished.load() == blockWidth * blockHeight) {
-		StopRendering(); // stop workers from rendering until next frame, since all blocks are finished
+	// Drain the queue every frame regardless (cheap — just pops,
+	// doesn't touch the texture), so it doesn't build up.
+	//Tile tile{};
+	//while (blockQueue.try_pop(tile)) {
+	//	// intentionally discarded — we only upload once fully done
+	//}
+
+	// Only touch the GPU texture once the whole frame is ready.
+	if (blocksFinished.load() == blockWidth * blockHeight && !uploadedThisFrame) {
+		StopRendering();
+
+		auto t1 = std::chrono::high_resolution_clock::now();
+		std::cout << "Render took: "
+			<< std::chrono::duration<double, std::milli>(t1 - renderStartTime).count()
+			<< "ms\n";
+
+		screenTexture.Bind();
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		glPixelStorei(GL_UNPACK_ROW_LENGTH, viewport.GetWidth());
+		screenTexture.SetTexSubImage(0, 0, viewport.GetWidth(), viewport.GetHeight(),
+			GL_RGB, pixels.data());
+		glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+
+		uploadedThisFrame = true; // guard so you don't re-upload every frame after finishing
 	}
 
-	screenTexture.Bind();
-	// non pixel size aligned data, so set unpack alignment to 1
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-	glPixelStorei(GL_UNPACK_ROW_LENGTH, viewport.GetWidth());
+	//if (blocksFinished.load() == blockWidth * blockHeight) {
+	//	StopRendering(); // stop workers from rendering until next frame, since all blocks are finished
+	//}
 
-	const int MAX_UPDATES_PER_FRAME = 8;
-	int i = 0;
-	Tile tile{};
-	while (i < MAX_UPDATES_PER_FRAME && blockQueue.try_pop(tile)) {
-		// update texture with new pixel data
-		screenTexture.SetTexSubImage(tile.x, tile.y, tile.width, tile.height, GL_RGB, &pixels[(tile.y * viewport.GetWidth() + tile.x) * RGB_STRIDE]);
-		//viewportTexture.SetTexSubImage(viewport.GetWidth(), viewport.GetHeight(), GL_RGB, pixels.data());
-		i++;
-	}
+	//screenTexture.Bind();
+	//// non pixel size aligned data, so set unpack alignment to 1
+	//glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	//glPixelStorei(GL_UNPACK_ROW_LENGTH, viewport.GetWidth());
 
-	glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+	//const int MAX_UPDATES_PER_FRAME = 8;
+	//int i = 0;
+	//Tile tile{};
+	//while (i < MAX_UPDATES_PER_FRAME && blockQueue.try_pop(tile)) {
+	//	// update texture with new pixel data
+	//	screenTexture.SetTexSubImage(tile.x, tile.y, tile.width, tile.height, GL_RGB, &pixels[(tile.y * viewport.GetWidth() + tile.x) * RGB_STRIDE]);
+	//	//viewportTexture.SetTexSubImage(viewport.GetWidth(), viewport.GetHeight(), GL_RGB, pixels.data());
+	//	i++;
+	//}
+
+	//glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 }
 
 void ViewportGui::Update()
 {
+	PropertiesUpdate();
+
 	ImGui::Begin("Viewport");
 	viewportSize = ImGui::GetContentRegionAvail();
 	//cout << "viewport size: " << viewportSize.x << " " << viewportSize.y << endl;

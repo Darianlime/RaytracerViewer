@@ -27,11 +27,14 @@ int Application::Run() {
 	std::vector<std::string> light = { "-3.0f", "15.0f", "-10.0f", "1", "1", "1", "1"};
 	objectFactory.GetFactoryMap()[typeid(LightFactory)].get()->CreateObject(string("light"), light);
 
+	UpdateGUIState updateGUIState{};
 	UseImGui ImGui;
-	ViewportGui viewportGui(objectFactory);
-	PropertiesGui propertiesGui;
+	ViewportGui viewportGui(objectFactory, updateGUIState);
+	PropertiesGui propertiesGui(updateGUIState);
 	HWND hwnd = glfwGetWin32Window(screen.GetWindow());
-	MenuGui menuGui(hwnd);
+	MenuGui menuGui(hwnd, updateGUIState);
+	TimelineGui timelineGui(objectFactory, updateGUIState);
+
 	ImGui.Init(screen.GetWindow());
 	while (!screen.ShouldClose()) {
 		if (Keyboard::Key(GLFW_KEY_ESCAPE)) {
@@ -45,12 +48,12 @@ int Application::Run() {
 		ImGui.PostUpdate();
 		viewportGui.PostUpdate();
 
+		updateGUIState.updateType = UpdateType::NONE;
+
 		menuGui.Update(objectFactory);
 		propertiesGui.Update(objectFactory);
-		viewportGui.PropertiesUpdate(propertiesGui.IsUpdating() | menuGui.IsUpdating(), propertiesGui.GetUpdatingIndex());
-
+		timelineGui.Update();
 		viewportGui.Update();
-
 
 		ImGui.Render();
 
