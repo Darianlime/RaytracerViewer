@@ -31,12 +31,24 @@ ViewportGui::~ViewportGui()
 	}
 }
 
+inline static void WriteRgbByte(unsigned char* dst, const Vec3& rgb) {
+	dst[0] = static_cast<unsigned char>(std::clamp(std::round(rgb.x * 255.0f), 0.0f, 255.0f));
+	dst[1] = static_cast<unsigned char>(std::clamp(std::round(rgb.y * 255.0f), 0.0f, 255.0f));
+	dst[2] = static_cast<unsigned char>(std::clamp(std::round(rgb.z * 255.0f), 0.0f, 255.0f));
+}
+
 void ViewportGui::WorkerRenderer(ObjectFactory& objectFactory)
 {
-	Raycast lRaycast(objectFactory.GetCameras()[0].GetEye(), objectFactory, 4);
+	Raycast lRaycast(objectFactory.GetCameras()[0].GetEye(), objectFactory, 2);
+	uint64_t lastSeenGen = 0;
 	while (isRendering) {
 		std::unique_lock lock(mtx); // lock mutex to check hasWork and rowsRendered
-		cv.wait(lock, [this] { return hasWork || !isRendering; }); // wait until there is work to do or rendering is finished
+		cv.wait(lock, [this, lastSeenGen] {
+			return renderGeneration.load() != lastSeenGen || !isRendering;
+			});
+		if (!isRendering) break;
+
+		lastSeenGen = renderGeneration.load();
 		lRaycast.SetEye(objectFactory.GetCameras()[0].GetEye());
 		//std::cout << lRaycast.GetEye().x << " " << lRaycast.GetEye().y << " " << lRaycast.GetEye().z << std::endl;
 		lock.unlock(); // unlock mutex to allow other threads to check hasWork and rowsRendered
@@ -44,7 +56,6 @@ void ViewportGui::WorkerRenderer(ObjectFactory& objectFactory)
 		while (true) {
 			int tileIndex = tilesRendered.fetch_add(1);
 			if (tileIndex >= blockWidth * blockHeight) {
-				std::this_thread::yield();
 				break;
 			}
 
@@ -66,16 +77,21 @@ void ViewportGui::WorkerRenderer(ObjectFactory& objectFactory)
 					intersectedPoint.first = Vec3(numeric_limits<float>::infinity(), numeric_limits<float>::infinity(), numeric_limits<float>::infinity());
 					intersectedPoint.second = false;
 					Color color = lRaycast.TraceRay(viewport.GetWindowLocation(x, y), viewport.bkgcolor, intersectedPoint);
-					Color pixelColor = Color(color.GetVec(), true);
+					//Color pixelColor = Color(color.GetVec(), true);
 					int pixelIndex = (y * vw + x) * RGB_STRIDE;
-					pixels[pixelIndex] = static_cast<unsigned char>(pixelColor.r);
-					pixels[pixelIndex + 1] = static_cast<unsigned char>(pixelColor.g);
-					pixels[pixelIndex + 2] = static_cast<unsigned char>(pixelColor.b);
+					WriteRgbByte(&pixels[pixelIndex], color.GetVec());
+
+					//pixels[pixelIndex] = static_cast<unsigned char>(pixelColor.r);
+					//pixels[pixelIndex + 1] = static_cast<unsigned char>(pixelColor.g);
+					//pixels[pixelIndex + 2] = static_cast<unsigned char>(pixelColor.b);
 				}
 			}
 
 			//blockQueue.push(Tile{ startX, startY, endX - startX, endY - startY });
-			blocksFinished.fetch_add(1);
+			if (blocksFinished.fetch_add(1) + 1 == blockWidth * blockHeight) {
+				std::lock_guard<std::mutex> lock(mtx);
+				doneCv.notify_all();
+			}
 		}
 	}
 }
@@ -89,6 +105,7 @@ void ViewportGui::StartRendering()
 		std::lock_guard<std::mutex> lock(mtx); // lock mutex to update hasWork and rowsRendered
 		tilesRendered = 0;
 		blocksFinished = 0;
+		renderGeneration.fetch_add(1);
 		hasWork = true;
 	}
 	renderStartTime = std::chrono::high_resolution_clock::now();
@@ -108,9 +125,10 @@ void ViewportGui::OverrideRendering()
 
 	// wait until all blocks from the previous frame are finished (or there was nothing)
 	if (oldBlockCount > 0) {
-		while (blocksFinished != oldBlockCount && isRendering) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(1));
-		}
+		std::unique_lock<std::mutex> lock(mtx);
+		doneCv.wait(lock, [this, oldBlockCount] {
+			return blocksFinished.load() >= oldBlockCount || !isRendering;
+		});
 	}
 
 	// clear leftover tiles
@@ -144,6 +162,8 @@ void ViewportGui::MenuUpdate(int isUpdatingProperties, std::string path)
 void ViewportGui::PropertiesUpdate()
 {
 	if (updateGUIState.updateType > 0) {
+		//std::cout << "update type: " << updateGUIState.updateType << std::endl;
+
 		OverrideRendering(); // stop workers from rendering until we update the viewport and pixel buffer for the new frame
 		switch (updateGUIState.updateType) {
 			case (int)UpdateType::PROPERTIES_CAMERA:
@@ -223,27 +243,6 @@ void ViewportGui::PostUpdate()
 
 		uploadedThisFrame = true; // guard so you don't re-upload every frame after finishing
 	}
-
-	//if (blocksFinished.load() == blockWidth * blockHeight) {
-	//	StopRendering(); // stop workers from rendering until next frame, since all blocks are finished
-	//}
-
-	//screenTexture.Bind();
-	//// non pixel size aligned data, so set unpack alignment to 1
-	//glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-	//glPixelStorei(GL_UNPACK_ROW_LENGTH, viewport.GetWidth());
-
-	//const int MAX_UPDATES_PER_FRAME = 8;
-	//int i = 0;
-	//Tile tile{};
-	//while (i < MAX_UPDATES_PER_FRAME && blockQueue.try_pop(tile)) {
-	//	// update texture with new pixel data
-	//	screenTexture.SetTexSubImage(tile.x, tile.y, tile.width, tile.height, GL_RGB, &pixels[(tile.y * viewport.GetWidth() + tile.x) * RGB_STRIDE]);
-	//	//viewportTexture.SetTexSubImage(viewport.GetWidth(), viewport.GetHeight(), GL_RGB, pixels.data());
-	//	i++;
-	//}
-
-	//glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 }
 
 void ViewportGui::Update()

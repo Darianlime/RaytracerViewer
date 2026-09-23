@@ -5,6 +5,10 @@
 #include "Factory/ObjectFactory.h"
 #include "Animation/imgui_neo_sequencer.h"
 #include "GUIState.h"
+#include <unordered_set>
+
+#define FPS 24
+#define FRAME_TIME (1.0f / FPS)	
 
 struct Keyframe {
 	ImGui::FrameIndexType frame;
@@ -24,10 +28,20 @@ private:
 	std::vector<ObjectKeys> objectKeyframes;
 	int currentObjectSize = 0;
 	int isUpdating;
+	float accumulator;
 	int32_t currentFrame;
+	int32_t previousFrame;
 	int32_t startFrame;
 	int32_t endFrame;
 	bool doDelete = false;
+	bool wasDragging = false;
+	bool playing = false;
+
+	void SortKeyframes(std::vector<Keyframe>& keyframes);
+	Keyframe* FindKeyframe(std::vector<Keyframe>& keys, ImGui::FrameIndexType frame);
+	int FindLeftKeyframeIndex(std::vector<Keyframe>& keys, ImGui::FrameIndexType target);
+	bool LerpKeyframes(ImGui::FrameIndexType currentFrame, std::vector<Keyframe>& keys, Vec3& result);
+	void DrawPlaybackControls();
 public:
 	TimelineGui(ObjectFactory& objectFactory, UpdateGUIState& updateState);
 	void PostUpdate() override;

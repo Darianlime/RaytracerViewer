@@ -41,6 +41,8 @@ class ViewportGui : public UseImGui {
 		bool uploadedThisFrame = false;
 
 		std::condition_variable cv;
+		std::condition_variable doneCv;
+		std::atomic<uint64_t> renderGeneration{ 0 };
 		std::mutex mtx;
 		ThreadSafeQueue<Tile> blockQueue;
 		vector<std::thread> renderWorkers;
