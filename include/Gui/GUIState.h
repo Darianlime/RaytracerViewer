@@ -7,7 +7,8 @@ enum UpdateType {
 	DELETING_MODEL = 1 << 2,
 	DELETING_LIGHT = 1 << 3,
 	DELETING_MATERIAL = 1 << 4,
-	CREATING_OBJECT = 1 << 5
+	CREATING_OBJECT = 1 << 5,
+	FRAME_CHANGE = 1 << 6
 };
 
 struct UpdateGUIState {

@@ -2,7 +2,6 @@
 #define PROPERTIES_GUI_H
 
 #include "UseImGui.h"
-#include "Factory/ObjectFactory.h"
 #include "GUIState.h"
 
 class PropertiesGui : public UseImGui {

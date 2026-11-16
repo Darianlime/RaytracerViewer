@@ -10,6 +10,8 @@ static Vec3 Lerp(const Vec3& start, const Vec3& end, float t) {
 
 TimelineGui::TimelineGui(ObjectFactory& objectFactory, UpdateGUIState& updateState) : objectFactory(objectFactory), updateState(updateState), isUpdating(0), currentFrame(0), previousFrame(0), startFrame(0), endFrame(64), accumulator(0.0f), currentObjectSize(0), objectKeyframes{}, doDelete(true), wasDragging(false) {
     objectKeyframes.push_back(ObjectKeys());
+    objectKeyframes.push_back(ObjectKeys());
+    currentObjectSize++;
     currentObjectSize++;
 }
 
@@ -65,26 +67,41 @@ int TimelineGui::FindLeftKeyframeIndex(std::vector<Keyframe>& keys, ImGui::Frame
 }
 
 bool TimelineGui::LerpKeyframes(ImGui::FrameIndexType currentFrame, std::vector<Keyframe>& keys, Vec3& result) {
-    if (keys.size() == 1 && keys[0].frame == currentFrame) {
-        result = keys[0].value;
+    if (keys.empty()) {
+        return false;
+    }
+    int closestLeftIndex = FindLeftKeyframeIndex(keys, currentFrame);
+    if (closestLeftIndex == -1) {
+        return false;
+    }
+
+    // Exactly on a keyframe
+    if (keys[closestLeftIndex].frame == currentFrame) {
+        result = keys[closestLeftIndex].value;
         return true;
     }
-    if (keys.size() > 1) {
-        int cloestLeftIndex = FindLeftKeyframeIndex(keys, currentFrame);
-        if (cloestLeftIndex != -1 && cloestLeftIndex + 1 < keys.size()) {
-            float t = (float)(currentFrame - keys[cloestLeftIndex].frame) / (keys[cloestLeftIndex+1].frame - keys[cloestLeftIndex].frame);
-            result = Lerp(keys[cloestLeftIndex].value, keys[cloestLeftIndex+1].value, t);
-            return true;
-        }
+
+    // Interpolate between two keyframes
+    if (closestLeftIndex + 1 < keys.size()) {
+        float t = static_cast<float>(currentFrame - keys[closestLeftIndex].frame) / (keys[closestLeftIndex + 1].frame - keys[closestLeftIndex].frame);
+        result = Lerp(keys[closestLeftIndex].value, keys[closestLeftIndex + 1].value, t);
+        return true;
     }
+
     return false;
 }
 
-void TimelineGui::HandleKeyFrames(std::vector<Keyframe>& keyframes, Vec3 value) {
+void TimelineGui::HandleKeyFrames(std::vector<Keyframe>& keyframes, Vec3 value, Channel channel) {
 	// Add a new keyframe when the 'I' key is pressed
-    if (ImGui::IsKeyPressed(ImGuiKey_I)) {
-		keyframes.push_back({currentFrame, value});
-		SortKeyframes(keyframes);
+    if (ImGui::IsKeyPressed(ImGuiKey_I) && channel != Channel::None && (selectedChannel == channel || selectedChannel == Channel::Transform)) {
+        Keyframe* existingKeyframe = FindKeyframe(keyframes, currentFrame);
+        if (!existingKeyframe) {
+            keyframes.push_back({ currentFrame, value });
+            SortKeyframes(keyframes);
+        }
+        else {
+			existingKeyframe->value = value;
+        }
     }
 
 	// Sort keyframes when dragging ends
@@ -152,6 +169,26 @@ void TimelineGui::DrawPlaybackControls() {
     ImGui::Text("Frame: %d / %d", currentFrame, endFrame);
 }
 
+bool TimelineGui::LerpTransform(ObjectFactory& objectFactory) {
+	bool anyObjectChanged = false;
+    int i = 0;
+    for (const auto& object : objectFactory.GetFactory<ModelFactory>().GetObjects()) {
+        bool objectChanged = false;
+        auto& positionKeys = objectKeyframes[i].positionKeys;
+        auto& rotationKeys = objectKeyframes[i].rotationKeys;
+        auto& scaleKeys = objectKeyframes[i].scaleKeys;
+        objectChanged = LerpKeyframes(currentFrame, positionKeys, object->pos) || objectChanged;
+        objectChanged = LerpKeyframes(currentFrame, rotationKeys, object->rot) || objectChanged;
+        objectChanged = LerpKeyframes(currentFrame, scaleKeys, object->size) || objectChanged;
+        if (objectChanged) {
+            object->UpdateTransformation();
+            anyObjectChanged = true;
+        }
+        i++;
+    }
+    return anyObjectChanged;
+}
+
 void TimelineGui::PostUpdate()
 {
 }
@@ -172,82 +209,73 @@ void TimelineGui::Update()
 
     DrawPlaybackControls();
 
-	if (playing) {
+    if (playing && !exportLocked) {
         accumulator += ImGui::GetIO().DeltaTime;
-        if (accumulator >= FRAME_TIME)
-        {
-            currentFrame++;
-            accumulator = 0.0f;
-
-            if (currentFrame > endFrame)
-                currentFrame = startFrame;
+        if (isRenderIdle() && (!capToFps || accumulator >= FRAME_TIME)) {
+            accumulator = std::min(accumulator - FRAME_TIME, FRAME_TIME);
+            if (accumulator < 0) accumulator = 0;
+            currentFrame = (currentFrame >= endFrame) ? startFrame : currentFrame + 1;
         }
-	}
+    }
 
     if (ImGui::BeginNeoSequencer("Sequencer", &currentFrame, &startFrame, &endFrame, { 0, 0 },
         ImGuiNeoSequencerFlags_EnableSelection | ImGuiNeoSequencerFlags_Selection_EnableDragging |
         ImGuiNeoSequencerFlags_Selection_EnableDeletion | ImGuiNeoSequencerFlags_AllowLengthChanging))
     {
+        auto& objects = objectFactory.GetFactory<ModelFactory>().GetObjects();
+
+        if (currentFrame != previousFrame && !exportLocked)
+        {
+            bool changed = false;
+            changed = LerpTransform(objectFactory) || changed;
+
+            if (changed) {
+                updateState.updateType = UpdateType::FRAME_CHANGE;
+            }
+        }
+        previousFrame = currentFrame;
+
         if (updateState.selectedObjectIndex < 0 || updateState.selectedObjectIndex >= currentObjectSize) {
             ImGui::EndNeoSequencer();
             ImGui::End();
             return;
         }
-        auto& selectedObject = objectFactory.GetFactory<ModelFactory>().GetObjects()[updateState.selectedObjectIndex];
+        auto& selectedObject = objects[updateState.selectedObjectIndex];
         auto& positionKeys = objectKeyframes[updateState.selectedObjectIndex].positionKeys;
         auto& rotationKeys = objectKeyframes[updateState.selectedObjectIndex].rotationKeys;
         auto& scaleKeys = objectKeyframes[updateState.selectedObjectIndex].scaleKeys;
+
+        selectedChannel = Channel::None;
+
 		// Draw the transform group
         if (ImGui::BeginNeoGroup("Transform", &transformOpen)) {
+            if (ImGui::IsNeoTimelineSelected()) {
+                selectedChannel = Channel::Transform;
+            }
             if (ImGui::BeginNeoTimelineEx("Position")) {
-                HandleKeyFrames(positionKeys, selectedObject->pos);
+                if (ImGui::IsNeoTimelineSelected()) {
+                    selectedChannel = Channel::Position;
+                }
+				HandleKeyFrames(positionKeys, selectedObject->pos, Channel::Position);
                 ImGui::EndNeoTimeLine();
             }
             if (ImGui::BeginNeoTimelineEx("Rotation")) {
-                HandleKeyFrames(rotationKeys, selectedObject->rot);
+                if (ImGui::IsNeoTimelineSelected()) {
+                    selectedChannel = Channel::Rotation;
+                }
+                HandleKeyFrames(rotationKeys, selectedObject->rot, Channel::Rotation);
                 ImGui::EndNeoTimeLine();
             }
             if (ImGui::BeginNeoTimelineEx("Scale")) {
-                HandleKeyFrames(scaleKeys, selectedObject->size);
+                if (ImGui::IsNeoTimelineSelected()) {
+                    selectedChannel = Channel::Scale;
+                }
+                HandleKeyFrames(scaleKeys, selectedObject->size, Channel::Scale);
                 ImGui::EndNeoTimeLine();
             }
             ImGui::EndNeoGroup();
         }
         ImGui::EndNeoSequencer();
-
-
-        if (currentFrame != previousFrame)
-        {
-            bool changed = false;
-
-            changed = LerpKeyframes(currentFrame, positionKeys, selectedObject->pos) || changed;
-            changed = LerpKeyframes(currentFrame, rotationKeys, selectedObject->rot) || changed;
-            changed = LerpKeyframes(currentFrame, scaleKeys, selectedObject->size) || changed;
-
-            //if (!changed) {
-            //    Keyframe* positionKeyframe = FindKeyframe(positionKeys, currentFrame);
-            //    Keyframe* rotationKeyframe = FindKeyframe(rotationKeys, currentFrame);
-            //    Keyframe* scaleKeyframe = FindKeyframe(scaleKeys, currentFrame);
-
-            //    if (positionKeyframe) {
-            //        selectedObject->pos = positionKeyframe->value;
-            //        changed = true;
-            //    }
-            //    if (rotationKeyframe) {
-            //        selectedObject->rot = rotationKeyframe->value;
-            //        changed = true;
-            //    }
-            //    if (scaleKeyframe) {
-            //        selectedObject->size = scaleKeyframe->value;
-            //        changed = true;
-            //    }
-            //}
-            if (changed) {
-                selectedObject->UpdateTransformation();
-                updateState.updateType = UpdateType::PROPERTIES_OBJECTS;
-            }
-        }
-        previousFrame = currentFrame;
     }
 	ImGui::End();
 }

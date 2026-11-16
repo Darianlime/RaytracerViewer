@@ -37,6 +37,7 @@ bool Screen::Init() {
 		glfwTerminate();
 		return false;
 	}
+	glfwSwapInterval(0);
 	SetParameters();
 	return true;
 }

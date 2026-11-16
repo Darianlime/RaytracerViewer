@@ -6,7 +6,7 @@
 #include "raycast.h"
 #include "viewport.h"
 #include "camera.h"
-#include "Threads/ThreadSafeQueue.h"`
+#include "Threads/ThreadSafeQueue.h"
 
 #include <thread>
 #include <future>
@@ -14,6 +14,8 @@
 #include <chrono>
 #include <algorithm>
 #include "GUIState.h"
+
+using Clock = std::chrono::steady_clock;
 
 using namespace Raytracer;
 
@@ -26,19 +28,25 @@ struct Tile {
 
 class ViewportGui : public UseImGui {
 	private:
+		Clock::time_point renderStartTime;
+
 		bool start = true;
 
 		const uint8_t BLOCK_SIZE = 32;
 		const uint8_t RGB_STRIDE = 3;
-		std::atomic<int> blocksFinished = 0;
+		std::atomic<int> blocksFinished{ 0 };
+		std::atomic<int> activeWorkers{ 0 };
 		int blockWidth = 0;
 		int blockHeight = 0;
 		int numThreads = 0;
-		std::atomic<bool> isRendering = true;
-		std::atomic<int> tilesRendered = 0;
-		std::atomic<int> rowsRendered = 0;
+		std::atomic<bool> isRendering{true};
+		std::atomic<int> tilesRendered{ 0 };
+		std::atomic<int> rowsRendered{ 0 };
 		bool hasWork = false;
-		bool uploadedThisFrame = false;
+		std::atomic<bool> uploadedThisFrame{ false };
+		std::atomic<bool> exportLocked{false};
+		std::atomic<bool> textureNeedsRealloc{ false };
+		std::atomic<bool> cameraDirty{ false };
 
 		std::condition_variable cv;
 		std::condition_variable doneCv;
@@ -48,10 +56,6 @@ class ViewportGui : public UseImGui {
 		vector<std::thread> renderWorkers;
 		void WorkerRenderer(ObjectFactory& objectFactory);
 
-		void StartRendering();
-		void OverrideRendering();
-		void StopRendering();
-
 		ObjectFactory& objectFactory;
 		UpdateGUIState& updateGUIState;
 		ScreenTexture screenTexture;
@@ -59,14 +63,32 @@ class ViewportGui : public UseImGui {
 		ImVec2 lastViewportSize;
 		Viewport viewport;
 		std::vector<unsigned char> pixels;
-
+		Vec3 frameEye;
 	public:
+		const int fixedW = 640, fixedH = 360;
+		std::atomic<int> shadeDepth{ 1 };
+
 		ViewportGui(ObjectFactory& objectFactory, UpdateGUIState& updateState);
 		~ViewportGui();
 		void PostUpdate();
 		void PropertiesUpdate();
 		void MenuUpdate(int isUpdatingProperties, std::string path);
 		void Update() override;
+		void HandleCameraControls();
+
+		void StartRendering();
+		void OverrideRendering();
+		void StopRendering();
+		void WaitForRender();
+		void UploadFrameIfReady();
+		bool IsRenderingDone() const;
+		const std::vector<unsigned char>& GetPixels() const { return pixels; }
+		int GetWidth() const { return viewportSize.x; }
+		int GetHeight() const { return viewportSize.y; }
+
+		void SetExportLock(bool v) { exportLocked = v; }
+		void ApplyRenderSize(int w, int h);
+		void ApplyCamera();
 };
 
 #endif // !VIEWPORTGUI_H

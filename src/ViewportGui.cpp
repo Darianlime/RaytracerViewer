@@ -23,11 +23,17 @@ ViewportGui::ViewportGui(ObjectFactory &objectFactory, UpdateGUIState& updateSta
 
 ViewportGui::~ViewportGui()
 {
-	isRendering = false;
-	for (int i = 0; i < renderWorkers.size(); i++) {
-		if (renderWorkers[i].joinable()) {
-			renderWorkers[i].join();
-		}
+	{
+		std::lock_guard<std::mutex> lock(mtx);
+		isRendering = false;
+	}
+
+	cv.notify_all();
+
+	for (auto& worker : renderWorkers)
+	{
+		if (worker.joinable())
+			worker.join();
 	}
 }
 
@@ -37,9 +43,61 @@ inline static void WriteRgbByte(unsigned char* dst, const Vec3& rgb) {
 	dst[2] = static_cast<unsigned char>(std::clamp(std::round(rgb.z * 255.0f), 0.0f, 255.0f));
 }
 
+void ViewportGui::HandleCameraControls() {
+	if (exportLocked) return;
+	if (!ImGui::IsWindowHovered() || !ImGui::IsMouseDown(ImGuiMouseButton_Right)) return;
+
+	ImGuiIO& io = ImGui::GetIO();
+	Raytracer::Camera& cam = objectFactory.GetCameraIndex(0);
+
+	Vec3 d = cam.viewdir.Normalize();
+	float yaw = std::atan2(d.x, -d.z);
+	float pitch = std::asin(std::clamp(d.y, -1.0f, 1.0f));
+	bool moved = false;
+
+	// Mouse look
+	if (io.MouseDelta.x != 0.0f || io.MouseDelta.y != 0.0f) {
+		const float sens = 0.003f;                       // radians per pixel
+		yaw += io.MouseDelta.x * sens;
+		pitch -= io.MouseDelta.y * sens;
+		pitch = std::clamp(pitch, -1.55f, 1.55f);        // just under 89 degrees
+		d = Vec3(std::sin(yaw) * std::cos(pitch), std::sin(pitch), -std::cos(yaw) * std::cos(pitch));
+		moved = true;
+	}
+
+	// WASD + Q/E
+	Vec3 right = Vec3(-d.z, 0.0f, d.x).Normalize();      // horizontal right vector
+	float speed = (io.KeyShift ? 10.0f : 3.0f) * io.DeltaTime;
+	Vec3 move(0, 0, 0);
+	if (ImGui::IsKeyDown(ImGuiKey_W)) move = move + d;
+	if (ImGui::IsKeyDown(ImGuiKey_S)) move = move - d;
+	if (ImGui::IsKeyDown(ImGuiKey_D)) move = move + right;
+	if (ImGui::IsKeyDown(ImGuiKey_A)) move = move - right;
+	if (ImGui::IsKeyDown(ImGuiKey_E)) move = move + Vec3(0, 1, 0);
+	if (ImGui::IsKeyDown(ImGuiKey_Q)) move = move - Vec3(0, 1, 0);
+	if (move.x != 0 || move.y != 0 || move.z != 0) {
+		cam.eye = cam.eye + move.Normalize() * speed;
+		moved = true;
+	}
+
+	if (moved) {
+		cam.viewdir = d;
+		cam.CalcCoords();
+		std::cout << "Camera position: " << cam.eye.x << ", " << cam.eye.y << ", " << cam.eye.z << std::endl;
+		updateGUIState.updateType = UpdateType::PROPERTIES_CAMERA;
+	}
+}
+
+void ViewportGui::ApplyCamera() {
+	std::lock_guard<std::mutex> lock(mtx);
+	const Raytracer::Camera& cam = objectFactory.GetCameras()[0];
+	viewport.CalcWindowCorners(cam);
+	frameEye = cam.GetEye();
+}
+
 void ViewportGui::WorkerRenderer(ObjectFactory& objectFactory)
 {
-	Raycast lRaycast(objectFactory.GetCameras()[0].GetEye(), objectFactory, 2);
+	Raycast lRaycast(objectFactory.GetCameras()[0].GetEye(), objectFactory, shadeDepth);
 	uint64_t lastSeenGen = 0;
 	while (isRendering) {
 		std::unique_lock lock(mtx); // lock mutex to check hasWork and rowsRendered
@@ -49,7 +107,9 @@ void ViewportGui::WorkerRenderer(ObjectFactory& objectFactory)
 		if (!isRendering) break;
 
 		lastSeenGen = renderGeneration.load();
-		lRaycast.SetEye(objectFactory.GetCameras()[0].GetEye());
+		lRaycast.SetEye(frameEye);
+		lRaycast.SetShadeDepth(shadeDepth.load());
+		activeWorkers.fetch_add(1);
 		//std::cout << lRaycast.GetEye().x << " " << lRaycast.GetEye().y << " " << lRaycast.GetEye().z << std::endl;
 		lock.unlock(); // unlock mutex to allow other threads to check hasWork and rowsRendered
 
@@ -88,15 +148,26 @@ void ViewportGui::WorkerRenderer(ObjectFactory& objectFactory)
 			}
 
 			//blockQueue.push(Tile{ startX, startY, endX - startX, endY - startY });
-			if (blocksFinished.fetch_add(1) + 1 == blockWidth * blockHeight) {
-				std::lock_guard<std::mutex> lock(mtx);
+			if (blocksFinished.fetch_add(1) + 1 >= blockWidth * blockHeight) {
+				auto renderEndTime = Clock::now();
+
+				double renderMs =
+					std::chrono::duration<double, std::milli>(
+						renderEndTime - renderStartTime
+					).count();
+
+				std::cout << "Full render: "
+					<< renderMs
+					<< " ms\n";
+				std::lock_guard<std::mutex> g(mtx);
 				doneCv.notify_all();
 			}
 		}
+		activeWorkers.fetch_sub(1);
+		{ std::lock_guard<std::mutex> g(mtx); }
+		doneCv.notify_all();
 	}
 }
-
-std::chrono::high_resolution_clock::time_point renderStartTime;
 
 void ViewportGui::StartRendering()
 {
@@ -108,7 +179,7 @@ void ViewportGui::StartRendering()
 		renderGeneration.fetch_add(1);
 		hasWork = true;
 	}
-	renderStartTime = std::chrono::high_resolution_clock::now();
+	renderStartTime = Clock::now();
 	uploadedThisFrame = false; // reset so we can upload the new frame once it's done
 	cv.notify_all();
 }
@@ -127,7 +198,7 @@ void ViewportGui::OverrideRendering()
 	if (oldBlockCount > 0) {
 		std::unique_lock<std::mutex> lock(mtx);
 		doneCv.wait(lock, [this, oldBlockCount] {
-			return blocksFinished.load() >= oldBlockCount || !isRendering;
+			return IsRenderingDone() || !isRendering;
 		});
 	}
 
@@ -136,12 +207,39 @@ void ViewportGui::OverrideRendering()
 	while (blockQueue.try_pop(tile)) {}
 } 
 
+void ViewportGui::WaitForRender()
+{
+	std::unique_lock<std::mutex> lock(mtx);
+	doneCv.wait(lock, [this] {
+		return IsRenderingDone() || !isRendering;
+	});
+}
+
 void ViewportGui::StopRendering() {
 	{
 		std::lock_guard<std::mutex> lock(mtx);
 		hasWork = false;
 	}
 	cv.notify_all();
+}
+
+void ViewportGui::UploadFrameIfReady() {
+	if (exportLocked) return;
+	if (IsRenderingDone() && !uploadedThisFrame) {
+		if (textureNeedsRealloc.exchange(false)) {
+			screenTexture.SetTexImage(GL_RGB8, viewport.GetWidth(), viewport.GetHeight(), GL_RGB, nullptr);
+		}
+		screenTexture.Bind();
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		glPixelStorei(GL_UNPACK_ROW_LENGTH, viewport.GetWidth());
+		screenTexture.SetTexSubImage(0, 0, viewport.GetWidth(), viewport.GetHeight(), GL_RGB, pixels.data());
+		glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+		uploadedThisFrame = true;
+	}
+}
+
+bool ViewportGui::IsRenderingDone() const {
+	return blocksFinished.load() >= blockWidth * blockHeight && activeWorkers.load() == 0;
 }
 
 void ViewportGui::MenuUpdate(int isUpdatingProperties, std::string path)
@@ -161,14 +259,38 @@ void ViewportGui::MenuUpdate(int isUpdatingProperties, std::string path)
 
 void ViewportGui::PropertiesUpdate()
 {
-	if (updateGUIState.updateType > 0) {
-		//std::cout << "update type: " << updateGUIState.updateType << std::endl;
+	if (exportLocked) return;
 
-		OverrideRendering(); // stop workers from rendering until we update the viewport and pixel buffer for the new frame
-		switch (updateGUIState.updateType) {
-			case (int)UpdateType::PROPERTIES_CAMERA:
-				viewport.CalcWindowCorners(objectFactory.GetCameras()[0]);
-				break;
+	if (updateGUIState.updateType == (int)UpdateType::PROPERTIES_CAMERA) {
+		cameraDirty = true;
+	}
+	if (cameraDirty && IsRenderingDone()) {
+		cameraDirty = false;
+		UploadFrameIfReady();   // show the finished frame before StartRendering clears the flag
+		ApplyCamera();
+		StartRendering();
+	}
+
+	if (updateGUIState.updateType > 0 && updateGUIState.updateType != (int)UpdateType::PROPERTIES_CAMERA) {
+		//std::cout << "update type: " << updateGUIState.updateType << std::endl;
+	
+
+		if (updateGUIState.updateType == (int)UpdateType::FRAME_CHANGE) {
+			//auto start = std::chrono::high_resolution_clock::now();
+			//objectFactory.GetFactory<ModelFactory>().GetObjects()[updateGUIState.selectedObjectIndex]->UpdateTransformation();
+			UploadFrameIfReady();
+			StartRendering(); // signal worker threads to start rendering the new frame
+			return;
+			//auto end = std::chrono::high_resolution_clock::now();
+
+			//std::cout << "UpdateTransformation: "
+			//	<< std::chrono::duration<double, std::milli>(
+			//		end - start).count()
+			//	<< " ms\n";
+		}
+		else {
+			OverrideRendering(); // stop workers from rendering until we update the viewport and pixel buffer for the new frame;
+			switch (updateGUIState.updateType) {
 			case (int)UpdateType::DELETING_MATERIAL:
 				objectFactory.RemoveMaterial(updateGUIState.deletingIndex);
 				break;
@@ -184,79 +306,61 @@ void ViewportGui::PropertiesUpdate()
 			break;
 			default:
 				break;
+			}
 		}
 		StartRendering(); // signal worker threads to start rendering the new frame
 	}
 }
 
+
+void ViewportGui::ApplyRenderSize(int w, int h) {
+	OverrideRendering();
+
+	viewport.SetWidthHeight(w, h);
+	ApplyCamera();
+	pixels.resize(size_t(w) * h * RGB_STRIDE);
+
+	blockWidth = (w + BLOCK_SIZE - 1) / BLOCK_SIZE;
+	blockHeight = (h + BLOCK_SIZE - 1) / BLOCK_SIZE;
+
+	textureNeedsRealloc = true;
+}
+
 void ViewportGui::PostUpdate()
 {
-	int newWidth = (int)viewportSize.x;
-	int newHeight = (int)viewportSize.y;
-
-	// CAN MAKE SO IF VIEWPORT SIZE CHANGES, THEN ONLY UPDATE THE PIXELS IN THE VIEWPORT
-	if ((newWidth != 0 && newHeight != 0) && (viewport.GetWidth() != newWidth || viewport.GetHeight() != newHeight)) {
-		std::cout << "in new height and width " << std::endl;
-		std::cout << newWidth << " " << newHeight << std::endl;
-
-		OverrideRendering(); // stop workers from rendering until we update the viewport and pixel buffer for the new frame
-
-		lastViewportSize = viewportSize;
-		viewport.SetWidthHeight(newWidth, newHeight);
-		viewport.CalcWindowCorners(objectFactory.GetCameras()[0]);
-		int size = newWidth * newHeight;
-		pixels.resize(size * RGB_STRIDE, static_cast<unsigned char>(viewport.bkgcolor.r));
-
-		// Recompute block layout for the new frame and reset counters
-		blockWidth = static_cast<int>(ceil(newWidth / static_cast<float>(BLOCK_SIZE)));
-		blockHeight = static_cast<int>(ceil(newHeight / static_cast<float>(BLOCK_SIZE)));
-		
-		// signal worker threads to start rendering the new frame
-		StartRendering();
-
-		// allocate memory for texture
-		screenTexture.SetTexImage(GL_RGB8, newWidth, newHeight, GL_RGB, nullptr);
+	if (!exportLocked) {
+		int tw, th;
+		if (true) { tw = fixedW; th = fixedH; }
+		if (tw != viewport.GetWidth() || th != viewport.GetHeight()) {
+			ApplyRenderSize(tw, th);
+			StartRendering();
+		}
 	}
-
-	// Drain the queue every frame regardless (cheap — just pops,
-	// doesn't touch the texture), so it doesn't build up.
-	//Tile tile{};
-	//while (blockQueue.try_pop(tile)) {
-	//	// intentionally discarded — we only upload once fully done
-	//}
-
-	// Only touch the GPU texture once the whole frame is ready.
-	if (blocksFinished.load() == blockWidth * blockHeight && !uploadedThisFrame) {
-		StopRendering();
-
-		auto t1 = std::chrono::high_resolution_clock::now();
-		std::cout << "Render took: "
-			<< std::chrono::duration<double, std::milli>(t1 - renderStartTime).count()
-			<< "ms\n";
-
-		screenTexture.Bind();
-		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-		glPixelStorei(GL_UNPACK_ROW_LENGTH, viewport.GetWidth());
-		screenTexture.SetTexSubImage(0, 0, viewport.GetWidth(), viewport.GetHeight(),
-			GL_RGB, pixels.data());
-		glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-
-		uploadedThisFrame = true; // guard so you don't re-upload every frame after finishing
-	}
+	UploadFrameIfReady();
 }
 
 void ViewportGui::Update()
 {
-	PropertiesUpdate();
-
 	ImGui::Begin("Viewport");
-	viewportSize = ImGui::GetContentRegionAvail();
-	//cout << "viewport size: " << viewportSize.x << " " << viewportSize.y << endl;
-	int newWidth = max(1, (int)viewportSize.x);
-	int newHeight = max(1, (int)viewportSize.y);
+	ImVec2 avail = ImGui::GetContentRegionAvail();
+	viewportSize = ImVec2(std::max(1.0f, avail.x), std::max(1.0f, avail.y));
 
-	viewportSize = ImVec2(newWidth, newHeight);
+	float aspect = float(viewport.GetWidth()) / std::max(1, viewport.GetHeight());
+	ImVec2 size = viewportSize;
+	if (size.x / size.y > aspect) {
+		size.x = size.y * aspect;
+	} else {
+		size.y = size.x / aspect;
+	}
 
-	ImGui::Image((void*)(intptr_t)screenTexture.tex, viewportSize);
+	ImGui::SetCursorPos(ImVec2(
+		ImGui::GetCursorPosX() + (viewportSize.x - size.x) * 0.5f,
+		ImGui::GetCursorPosY() + (viewportSize.y - size.y) * 0.5f)
+	);
+
+	ImGui::Image((void*)(intptr_t)screenTexture.tex, size);
+	HandleCameraControls();
 	ImGui::End();
+
+	PropertiesUpdate();
 }

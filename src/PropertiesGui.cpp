@@ -66,13 +66,13 @@ void PropertiesGui::Update(ObjectFactory& objectFactory)
     ImGui::Begin("Properties");
     if (ImGui::CollapsingHeader("Camera")) {
 		Raytracer::Camera& cam = objectFactory.GetCameraIndex(0);
-        ImGui::DragFloat3("Position", (float*)&cam.eye, 0.1f);
+        ImGui::DragFloat3("Position##cam", (float*)&cam.eye, 0.1f);
         if (ImGui::IsItemDeactivatedAfterEdit()) updateState.updateType = UpdateType::PROPERTIES_CAMERA;
         
-        ImGui::DragFloat3("View Direction", (float*)&cam.viewdir, 0.1f);
+        ImGui::DragFloat3("View Direction##cam", (float*)&cam.viewdir, 0.1f);
         if (ImGui::IsItemDeactivatedAfterEdit()) { updateState.updateType = UpdateType::PROPERTIES_CAMERA; cam.CalcCoords(); };
 
-        ImGui::DragFloat("Fov", &cam.vfov, 0.1f);
+        ImGui::DragFloat("Fov##cam", &cam.vfov, 0.1f);
         if (ImGui::IsItemDeactivatedAfterEdit()) updateState.updateType = UpdateType::PROPERTIES_CAMERA;
     }
     if (ImGui::CollapsingHeader("Materials")) {

@@ -25,10 +25,13 @@ Multithreaded C++ raytracer with real-time tiling rendering and an ImGui GUI to 
    ```bash
    cd RaytracerViewer/ThirdParty/vcpkg
    bootstrap-vcpkg.bat
-3. **Open the project in Visual Studio**
-4. Build the project
+3. **Install FFmpeg vcpkg:** 
+   ```bash
+   winget install -e --id Gyan.FFmpeg
+4. **Open the project in Visual Studio**
+5. **Build the project**
     - Select the x64-Release CMake preset (top toolbar)
     - Press Ctrl + Shift + B
-5. Run the application
+6. **Run the application**
     - Press Ctrl + F5 or click Run
 

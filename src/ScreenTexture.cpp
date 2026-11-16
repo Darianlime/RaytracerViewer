@@ -6,7 +6,7 @@ ScreenTexture::ScreenTexture(bool defaultParams) : id(currentId++) {
 	Generate();
 
 	if (defaultParams) {
-		SetFilters(GL_NEAREST, GL_NEAREST);
+		SetFilters(GL_LINEAR, GL_LINEAR);
 		SetWrap(GL_CLAMP_TO_EDGE);
 	}
 }
@@ -15,7 +15,7 @@ ScreenTexture::ScreenTexture(const char* path, const char* name, bool defaultPar
 	Generate();
 
 	if (defaultParams) {
-		SetFilters(GL_NEAREST, GL_NEAREST);
+		SetFilters(GL_LINEAR, GL_LINEAR);
 		SetWrap(GL_CLAMP_TO_EDGE);
 	}
 }
