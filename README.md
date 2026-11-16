@@ -4,7 +4,10 @@
 ## Overview
 Multithreaded C++ raytracer with real-time tiling rendering and an ImGui GUI to add objects or change properties
 
-## Demo
+## Editor Demo
+
+## Render Demo
+https://github.com/user-attachments/assets/642f838e-a7b8-49f8-9415-d003e54f9cba
 
 ## Features
 - Blinn-Phong lighting model
