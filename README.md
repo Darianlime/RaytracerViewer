@@ -109,7 +109,11 @@ Tip: set the object's transform in the Properties panel first, move the playhead
 | [FFmpeg](https://ffmpeg.org/) | MP4 encoding, run as an external program (not bundled) | LGPL/GPL, depending on build |
 | [x264](https://www.videolan.org/developers/x264.html) | H.264 encoder used by FFmpeg | GPL |
 
-**Models**
-- Stanford Bunny: [Stanford Computer Graphics Laboratory](https://graphics.stanford.edu/data/3Dscanrep/)
+**3D Models**
+- Stanford Bunny
+- Stanford Dragon
+- Stanford Buddha
+
+**Source:** [The Stanford 3D Scanning Repository – Stanford Computer Graphics Laboratory](https://graphics.stanford.edu/data/3Dscanrep/)
 
 This project is licensed under the [MIT License](LICENSE). Third-party libraries keep their own licenses.
