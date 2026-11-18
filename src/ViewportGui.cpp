@@ -83,7 +83,6 @@ void ViewportGui::HandleCameraControls() {
 	if (moved) {
 		cam.viewdir = d;
 		cam.CalcCoords();
-		std::cout << "Camera position: " << cam.eye.x << ", " << cam.eye.y << ", " << cam.eye.z << std::endl;
 		updateGUIState.updateType = UpdateType::PROPERTIES_CAMERA;
 	}
 }
@@ -149,16 +148,16 @@ void ViewportGui::WorkerRenderer(ObjectFactory& objectFactory)
 
 			//blockQueue.push(Tile{ startX, startY, endX - startX, endY - startY });
 			if (blocksFinished.fetch_add(1) + 1 >= blockWidth * blockHeight) {
-				auto renderEndTime = Clock::now();
+				//auto renderEndTime = Clock::now();
 
-				double renderMs =
-					std::chrono::duration<double, std::milli>(
-						renderEndTime - renderStartTime
-					).count();
+				//double renderMs =
+				//	std::chrono::duration<double, std::milli>(
+				//		renderEndTime - renderStartTime
+				//	).count();
 
-				std::cout << "Full render: "
-					<< renderMs
-					<< " ms\n";
+				//std::cout << "Full render: "
+				//	<< renderMs
+				//	<< " ms\n";
 				std::lock_guard<std::mutex> g(mtx);
 				doneCv.notify_all();
 			}

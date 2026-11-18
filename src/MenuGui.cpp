@@ -36,7 +36,12 @@ void MenuGui::Update()
                 }
             }
             if (ImGui::MenuItem("Export Animation", "Ctrl+Shift+E", false, !isExporting)) {
-                openExportPopup = true;
+                ffmpegAvailable = CheckFfmpeg();     
+                if (ffmpegAvailable) {
+                    openExportPopup = true;
+                } else {
+                    openFfmpegPopup = true;
+                }
             }
 			//if (ImGui::MenuItem("Export PPM Image", "Ctrl+Shift+E")) {
    //             if (SaveFile("All Files\0*.*\0""\0")) {
@@ -76,6 +81,7 @@ void MenuGui::Update()
         //}
         ImGui::EndMainMenuBar();
         DrawExportPopup();
+		DrawFfmpegPopup();
     }
 }
 
@@ -310,6 +316,42 @@ void MenuGui::DrawExportPopup() {
         ImGui::SameLine();
         if (ImGui::Button("Cancel", ImVec2(120, 0)))
             ImGui::CloseCurrentPopup();
+
+        ImGui::EndPopup();
+    }
+}
+
+bool MenuGui::CheckFfmpeg() {
+    return std::system("ffmpeg -version >NUL 2>&1") == 0;
+}
+
+void MenuGui::DrawFfmpegPopup() {
+    if (openFfmpegPopup) {
+        ImGui::OpenPopup("FFmpeg Required");
+        openFfmpegPopup = false;
+    }
+
+    ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
+    if (ImGui::BeginPopupModal("FFmpeg Required", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        static const char* kCmd = "winget install -e --id Gyan.FFmpeg";
+
+        ImGui::TextWrapped("MP4 export needs FFmpeg, which was not found on your PATH.");
+        ImGui::Spacing();
+        ImGui::Text("Install it by running this in a terminal:");
+
+        ImGui::SetNextItemWidth(360);
+        char buf[64];
+        strncpy_s(buf, kCmd, _TRUNCATE);
+        ImGui::InputText("##cmd", buf, sizeof buf, ImGuiInputTextFlags_ReadOnly);
+
+        ImGui::TextWrapped("Then restart this app.");
+        ImGui::Spacing();
+
+        if (ImGui::Button("Copy command")) ImGui::SetClipboardText(kCmd);
+        ImGui::SameLine();
+        if (ImGui::Button("OK", ImVec2(80, 0))) ImGui::CloseCurrentPopup();
 
         ImGui::EndPopup();
     }

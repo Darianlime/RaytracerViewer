@@ -26,6 +26,8 @@ private:
 	HWND hwnd;
 	std::string path = "";
 	std::atomic<bool> isExporting{ false };
+	bool ffmpegAvailable = false;
+	bool openFfmpegPopup = false;
 public:
 	MenuGui(HWND hwnd, ObjectFactory& objectFactory, ViewportGui& viewportGui, TimelineGui& timelineGui, UpdateGUIState& updateState);
 	~MenuGui();
@@ -38,12 +40,16 @@ public:
 	bool OpenFile(const char* filter);
 	bool SaveFile(const char* filter);
 	void DrawExportPopup();
+	bool CheckFfmpeg();
+	void DrawFfmpegPopup();
 
 	void SetPath(const std::string& newPath) { path = newPath; }
 
 	void CreateObj();
 	void CreatePlane();
 	void CreateBunny();
+
+
 };
 
 #endif // !PROPERTIES_GUI_H
