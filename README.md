@@ -68,6 +68,8 @@ Tip: set the object's transform in the Properties panel first, move the playhead
 
 ## Build (Windows x64)
 
+> **Want to skip building from source?** You can download a prebuilt version from the [Releases](https://github.com/Darianlime/RaytracerViewer/releases) page.
+
 ### Prerequisites
 - Visual Studio 2022 or 2026 with the C++ workload
 - CMake 3.26+
