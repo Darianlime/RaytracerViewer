@@ -47,7 +47,7 @@ public:
 
 	void CreateObj();
 	void CreatePlane();
-	void CreateBunny();
+	void CreateObjPath(const std::string& objPath);
 
 
 };

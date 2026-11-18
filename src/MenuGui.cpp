@@ -69,8 +69,14 @@ void MenuGui::Update()
             if (ImGui::MenuItem("Plane", "")) {
                 CreatePlane();
             }
-            if (ImGui::MenuItem("Standford Bunny", "")) {
-                CreateBunny();
+            if (ImGui::MenuItem("Stanford Bunny", "")) {
+                CreateObjPath("C:/dev/RaytracerViewer/RaytracerViewer/assets/bunny.obj");
+            }
+            if (ImGui::MenuItem("Stanford Dragon", "")) {
+                CreateObjPath("C:/dev/RaytracerViewer/RaytracerViewer/assets/dragon.obj");
+            }
+            if (ImGui::MenuItem("Stanford Buddha", "")) {
+                CreateObjPath("C:/dev/RaytracerViewer/RaytracerViewer/assets/buddha.obj");
             }
             ImGui::EndMenu();
         }
@@ -94,9 +100,9 @@ void MenuGui::CreatePlane() {
     model->checker.tileSize = 1.0f;
 }
 
-void MenuGui::CreateBunny() {
-    std::cout << "creating object: Bunny" << std::endl;
-    path = "C:/dev/RaytracerViewer/RaytracerViewer/assets/bunny.obj";
+void MenuGui::CreateObjPath(const std::string& objPath) {
+    std::cout << "creating object: " << objPath << std::endl;
+    path = objPath;
     CreateObj();
     Model* model = objectFactory.GetFactory<ModelFactory>().GetObjects().back().get();
 }
