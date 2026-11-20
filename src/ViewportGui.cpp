@@ -4,7 +4,7 @@ using std::min;
 using std::max;
 using std::numeric_limits;
 
-ViewportGui::ViewportGui(ObjectFactory &objectFactory, UpdateGUIState& updateState) : 
+ViewportGui::ViewportGui(ObjectFactory &objectFactory, UpdateGUIState& updateState, int threads) : 
 	viewportSize(0, 0), 
 	lastViewportSize(0,0), 
 	viewport(1, 1, Color(0.7f, 0.7f, 0.7f, false), 1.0f), 
@@ -13,7 +13,8 @@ ViewportGui::ViewportGui(ObjectFactory &objectFactory, UpdateGUIState& updateSta
 	updateGUIState(updateState)
 {
 	screenTexture.SetTexImage(GL_RGB, 1, 1, GL_RGB, nullptr);
-	numThreads = std::thread::hardware_concurrency()-2;
+	unsigned hw = std::thread::hardware_concurrency();
+	numThreads = threads > 0 ? threads : (hw > 2 ? hw - 2 : 1);
 
 	std::cout << "Using " << numThreads << " threads for rendering." << std::endl;
 	for (int i = 0; i < numThreads; i++) {
@@ -41,6 +42,24 @@ inline static void WriteRgbByte(unsigned char* dst, const Vec3& rgb) {
 	dst[0] = static_cast<unsigned char>(std::clamp(std::round(rgb.x * 255.0f), 0.0f, 255.0f));
 	dst[1] = static_cast<unsigned char>(std::clamp(std::round(rgb.y * 255.0f), 0.0f, 255.0f));
 	dst[2] = static_cast<unsigned char>(std::clamp(std::round(rgb.z * 255.0f), 0.0f, 255.0f));
+}
+
+void ViewportGui::SavePpm(const std::string& path) {
+	int w = viewport.GetWidth(), h = viewport.GetHeight();
+	FILE* f = std::fopen(path.c_str(), "wb");
+	if (!f) { std::cerr << "Error opening " << path << std::endl; return; }
+	std::fprintf(f, "P6\n%d %d\n255\n", w, h);
+	std::fwrite(pixels.data(), 1, size_t(w) * h * RGB_STRIDE, f);
+	std::fclose(f);
+}
+
+double ViewportGui::BenchFrameMs() {
+    ApplyCamera();                                   
+    auto t0 = std::chrono::steady_clock::now();
+    StartRendering();                               
+	WaitForRender();
+    auto t1 = std::chrono::steady_clock::now();
+    return std::chrono::duration<double, std::milli>(t1 - t0).count();
 }
 
 void ViewportGui::HandleCameraControls() {

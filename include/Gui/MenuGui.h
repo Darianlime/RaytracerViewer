@@ -45,9 +45,7 @@ public:
 
 	void SetPath(const std::string& newPath) { path = newPath; }
 
-	void CreateObj();
-	void CreatePlane();
-	void CreateObjPath(const std::string& objPath);
+	void CreatePresetObj(const std::string& objPath);
 
 
 };

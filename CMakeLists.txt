@@ -82,6 +82,7 @@ add_executable(RaytracerViewer
     src/TimelineGui.cpp
     src/imgui_neo_internal.cpp
     src/imgui_neo_sequencer.cpp
+    src/Benchmark.cpp
 )
 
 # Explicit include directories for VS

@@ -32,7 +32,7 @@ class ViewportGui : public UseImGui {
 
 		bool start = true;
 
-		const uint8_t BLOCK_SIZE = 32;
+		uint8_t BLOCK_SIZE = 16;
 		const uint8_t RGB_STRIDE = 3;
 		std::atomic<int> blocksFinished{ 0 };
 		std::atomic<int> activeWorkers{ 0 };
@@ -68,7 +68,7 @@ class ViewportGui : public UseImGui {
 		const int fixedW = 640, fixedH = 360;
 		std::atomic<int> shadeDepth{ 1 };
 
-		ViewportGui(ObjectFactory& objectFactory, UpdateGUIState& updateState);
+		ViewportGui(ObjectFactory& objectFactory, UpdateGUIState& updateState, int threads = 0);
 		~ViewportGui();
 		void PostUpdate();
 		void PropertiesUpdate();
@@ -89,6 +89,11 @@ class ViewportGui : public UseImGui {
 		void SetExportLock(bool v) { exportLocked = v; }
 		void ApplyRenderSize(int w, int h);
 		void ApplyCamera();
+
+		void SetBlockSize(int size) { BLOCK_SIZE = size; }
+
+		double BenchFrameMs();
+		void SavePpm(const std::string& path);
 };
 
 #endif // !VIEWPORTGUI_H

@@ -32,7 +32,8 @@ void MenuGui::Update()
         if (ImGui::BeginMenu("File")) {
 			if (ImGui::MenuItem("Import OBJ", "Ctrl+Shift+I")) { 
                 if (OpenFile("OBJ Files\0*.obj\0""\0")) {
-                    CreateObj();
+                    objectFactory.CreateObj(path);
+                    updateState.updateType = UpdateType::CREATING_OBJECT;
                 }
             }
             if (ImGui::MenuItem("Export Animation", "Ctrl+Shift+E", false, !isExporting)) {
@@ -67,16 +68,22 @@ void MenuGui::Update()
                 }
 		    }
             if (ImGui::MenuItem("Plane", "")) {
-                CreatePlane();
+                CreatePresetObj("C:/dev/RaytracerViewer/RaytracerViewer/assets/plane.obj");
+                Model* model = objectFactory.GetFactory<ModelFactory>().GetObjects().back().get();
+                model->checker.enabled = true;
+                model->checker.tileSize = 1.0f;
             }
             if (ImGui::MenuItem("Stanford Bunny", "")) {
-                CreateObjPath("C:/dev/RaytracerViewer/RaytracerViewer/assets/bunny.obj");
+                CreatePresetObj("C:/dev/RaytracerViewer/RaytracerViewer/assets/bunny.obj");
             }
-            if (ImGui::MenuItem("Stanford Dragon", "")) {
-                CreateObjPath("C:/dev/RaytracerViewer/RaytracerViewer/assets/dragon.obj");
+            if (ImGui::MenuItem("Stanford Dragon 202K", "")) {
+                CreatePresetObj("C:/dev/RaytracerViewer/RaytracerViewer/assets/dragon202k.obj");
+            }
+            if (ImGui::MenuItem("Stanford Dragon 871k", "")) {
+                CreatePresetObj("C:/dev/RaytracerViewer/RaytracerViewer/assets/dragon871k.obj");
             }
             if (ImGui::MenuItem("Stanford Buddha", "")) {
-                CreateObjPath("C:/dev/RaytracerViewer/RaytracerViewer/assets/buddha.obj");
+                CreatePresetObj("C:/dev/RaytracerViewer/RaytracerViewer/assets/buddha.obj");
             }
             ImGui::EndMenu();
         }
@@ -91,51 +98,9 @@ void MenuGui::Update()
     }
 }
 
-void MenuGui::CreatePlane() {
-    std::cout << "creating object: Plane" << std::endl;
-    path = "C:/dev/RaytracerViewer/RaytracerViewer/assets/plane.obj";
-    CreateObj();
-    Model* model = objectFactory.GetFactory<ModelFactory>().GetObjects().back().get();
-    model->checker.enabled = true;
-    model->checker.tileSize = 1.0f;
-}
-
-void MenuGui::CreateObjPath(const std::string& objPath) {
+void MenuGui::CreatePresetObj(const std::string& objPath) {
     std::cout << "creating object: " << objPath << std::endl;
-    path = objPath;
-    CreateObj();
-    Model* model = objectFactory.GetFactory<ModelFactory>().GetObjects().back().get();
-}
-
-void MenuGui::CreateObj() {
-    objectFactory.GetFactory<ModelFactory>().ResetCurrentVertexStart();
-    int intialSize = objectFactory.GetFactory<ModelFactory>().GetObjects().size();
-    if (File::ReadOBJ(path, -1, -1, objectFactory) == -1) {
-        throw std::runtime_error("Failed to read OBJ file");
-    }
-    int updatedSize = objectFactory.GetFactory<ModelFactory>().GetObjects().size();
-    for (int i = intialSize; i < updatedSize; i++) {
-        Model* model = objectFactory.GetFactory<ModelFactory>().GetObjects()[i].get();
-
-        Vec3 centroid = model->CalculateCentriod();
-        model->pos = centroid;
-        for (auto& vertex : model->GetVertices())
-        {
-            vertex.pos = vertex.pos - centroid;
-        }
-        for (auto& tri : model->GetTriangles())
-        {
-            tri.CacheCalculations();
-        }
-
-        std::cout << "model pos: " << model->pos.x << ", " << model->pos.y << ", " << model->pos.z << std::endl;
-        model->rot.ToString();
-        model->SetMatrix(model->pos, model->rot, model->size);
-        model->GetBVH().Init();
-        model->GetBVH().Build();
-        model->localToWorld.ToString();
-        std::cout << "model triangles: " << model->GetTriangles().size() << std::endl;
-    }
+    objectFactory.CreateObj(objPath);
     updateState.updateType = UpdateType::CREATING_OBJECT;
 }
 

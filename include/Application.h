@@ -12,7 +12,7 @@ class Application {
 public:
 	Application();
 
-	int Run();
+	int Run(int argc, char** argv);
 };
 
 #endif // !TEXTURE_H
