@@ -4,14 +4,21 @@
 #include <cstring>
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h>
+#include "Paths.h"
 
 Application::Application() {}
 
 int Application::Run(int argc, char** argv) {
 	bool bench = false;                                
 	for (int i = 1; i < argc; ++i) {
-		if (std::strcmp(argv[i], "--bench") == 0) { std::cout << "Running benchmark..." << std::endl; bench = true; }
+		if (std::strcmp(argv[i], "--bench") == 0) { 
+			std::cout << "Running benchmark..." << std::endl; bench = true; 
+		} 
+		if (std::strcmp(argv[i], "$exeCandidates") == 0) {
+			return 0;
+		}
 	}
+
 	Benchmark::BenchArgs benchArgs = Benchmark::ParseArgs(argc, argv);
 
 	Screen screen(1270, 720);
@@ -35,7 +42,8 @@ int Application::Run(int argc, char** argv) {
 		std::vector<std::string> light = { "-6.0f", "10.0f", "6.0f", "1", "1", "1", "1" };
 		objectFactory.GetFactoryMap()[typeid(LightFactory)].get()->CreateObject(string("light"), light);
 
-		objectFactory.CreateObj("C:/dev/RaytracerViewer/RaytracerViewer/assets/plane.obj");
+		std::cout << "creating object: " << AssetPath("plane.obj").string() << std::endl;
+		objectFactory.CreateObj(AssetPath("plane.obj").string());
 		Model* model = objectFactory.GetFactory<ModelFactory>().GetObjects().back().get();
 		model->checker.enabled = true;
 		model->checker.tileSize = 1.0f;

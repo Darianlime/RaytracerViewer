@@ -83,6 +83,7 @@ add_executable(RaytracerViewer
     src/imgui_neo_internal.cpp
     src/imgui_neo_sequencer.cpp
     src/Benchmark.cpp
+    src/Paths.cpp 
 )
 
 # Explicit include directories for VS
@@ -93,3 +94,12 @@ target_link_libraries(RaytracerViewer PRIVATE
     lib
     imgui
 )
+
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/assets)
+    add_custom_target(copy_assets ALL
+        COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different
+                ${CMAKE_CURRENT_SOURCE_DIR}/assets
+                $<TARGET_FILE_DIR:RaytracerViewer>/assets
+        COMMENT "Copying assets next to the executable")
+    add_dependencies(RaytracerViewer copy_assets)
+endif()

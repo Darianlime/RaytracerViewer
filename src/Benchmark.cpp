@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <vector>
+#include "Paths.h"
 
 
 namespace Benchmark {
@@ -28,8 +29,16 @@ namespace Benchmark {
         auto& models = objectFactory.GetFactory<ModelFactory>().GetObjects();
         size_t firstNew = models.size();
 
-        std::string meshPath = "C:/dev/RaytracerViewer/RaytracerViewer/assets/" + a.mesh;
+        std::string meshPath = AssetPath(a.mesh).string();
+        if (!std::filesystem::exists(meshPath)) {
+            std::cerr << "Mesh not found: " << meshPath << std::endl;
+            return 1;
+        }
         objectFactory.CreateObj(meshPath);
+        if (models.size() == firstNew) {                            
+            std::cerr << "No model was created from " << meshPath << std::endl;
+            return 1;
+        }
 
         SetupBenchScene(objectFactory, models[firstNew].get(), std::clamp(a.pose, 1, 3), a.lights);
         viewportGui.SetBlockSize(a.block);
@@ -62,9 +71,11 @@ namespace Benchmark {
         std::printf("mesh=%s tris=%zu threads=%d bvh=%d res=640x360 build=%.0fms median=%.1fms p95=%.1fms (%.1f fps)\n",
             a.mesh.c_str(), tris, a.threads, a.bvh, build, median, p95, 1000.0 / median);
 
-        viewportGui.SavePpm("Benchmarks/Renders/bench_" + a.mesh + "_p" +
-            std::to_string(a.pose) + "_l" + std::to_string(a.lights) +
-            "_b" + std::to_string(a.bvh) + ".ppm");
+        auto outDir = ExeDir() / "Benchmarks" / "Renders";
+        std::filesystem::create_directories(outDir);
+        std::string file = "bench_" + a.mesh + "_p" + std::to_string(a.pose) +
+            "_l" + std::to_string(a.lights) + "_b" + std::to_string(a.bvh) + ".ppm";
+        viewportGui.SavePpm((outDir / file).string());
         return 0;
     }
 

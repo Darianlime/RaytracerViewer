@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <chrono>
 #include <cmath>
+#include "Paths.h"
 
 MenuGui::MenuGui(HWND hwnd, ObjectFactory& objectFactory, ViewportGui& viewportGui, TimelineGui& timelineGui, UpdateGUIState& updateState) : 
     hwnd(hwnd), objectFactory(objectFactory), viewportGui(viewportGui), timelineGui(timelineGui), updateState(updateState) {
@@ -68,22 +69,22 @@ void MenuGui::Update()
                 }
 		    }
             if (ImGui::MenuItem("Plane", "")) {
-                CreatePresetObj("C:/dev/RaytracerViewer/RaytracerViewer/assets/plane.obj");
+                CreatePresetObj(AssetPath("plane.obj").string());
                 Model* model = objectFactory.GetFactory<ModelFactory>().GetObjects().back().get();
                 model->checker.enabled = true;
                 model->checker.tileSize = 1.0f;
             }
             if (ImGui::MenuItem("Stanford Bunny", "")) {
-                CreatePresetObj("C:/dev/RaytracerViewer/RaytracerViewer/assets/bunny.obj");
+                CreatePresetObj(AssetPath("bunny.obj").string());   
             }
             if (ImGui::MenuItem("Stanford Dragon 202K", "")) {
-                CreatePresetObj("C:/dev/RaytracerViewer/RaytracerViewer/assets/dragon202k.obj");
+                CreatePresetObj(AssetPath("dragon202k.obj").string());
             }
             if (ImGui::MenuItem("Stanford Dragon 871k", "")) {
-                CreatePresetObj("C:/dev/RaytracerViewer/RaytracerViewer/assets/dragon871k.obj");
+                CreatePresetObj(AssetPath("dragon871k.obj").string()); 
             }
             if (ImGui::MenuItem("Stanford Buddha", "")) {
-                CreatePresetObj("C:/dev/RaytracerViewer/RaytracerViewer/assets/buddha.obj");
+                CreatePresetObj(AssetPath("buddha.obj").string());
             }
             ImGui::EndMenu();
         }
