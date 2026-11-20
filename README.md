@@ -4,7 +4,7 @@
 A multithreaded CPU raytracer with a real-time tiled viewport and an ImGui editor for building scenes, animating them on a timeline, and exporting MP4 video.
 
 ## Editor Demo
-https://github.com/user-attachments/assets/ac68a6d6-1bcf-4ee2-9978-70c0e0fc3270
+[https://github.com/user-attachments/assets/ac68a6d6-1bcf-4ee2-9978-70c0e0fc3270](https://github.com/user-attachments/assets/ea45aa6f-73f4-4dc6-a1ed-3c7dd3c06c4e)
 
 ## Render Demo
 https://github.com/user-attachments/assets/642f838e-a7b8-49f8-9415-d003e54f9cba
