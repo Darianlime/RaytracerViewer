@@ -7,7 +7,7 @@
 
 namespace Benchmark {
     struct BenchArgs {
-        std::string mesh = "dragon.obj";
+        std::string mesh = "dragon202k.obj";
         int threads = 10, bvh = 1, pose = 1, frames = 30, lights = 1, block = 16;
     };
 
