@@ -140,7 +140,7 @@ If you downloaded the prebuilt Release ZIP, open a terminal in the folder contai
 If you built from source, run the executable from `out/build/x64-Release/Release`, or specify its path directly:
 
 ```powershell
-$exe = ".\RaytracerViewer\out\build\x64-Release\Release\RaytracerViewer.exe"
+$exe = ".\out\build\x64-Release\Release\RaytracerViewer.exe"
 & $exe --bench --mesh buddha.obj --threads 10 --pose 2 --lights 1 --frames 30
 ```
 
@@ -148,7 +148,7 @@ $exe = ".\RaytracerViewer\out\build\x64-Release\Release\RaytracerViewer.exe"
 
 | Option | Meaning | Default |
 |---|---|---|
-| `--mesh` | OBJ file in `assets/` | `dragon.obj` |
+| `--mesh` | OBJ file in `assets/` | `dragon202k.obj` |
 | `--threads` | Render worker threads | 10 |
 | `--bvh` | `1` = BVH, `0` = brute force (root bounding box check, then every triangle) | 1 |
 | `--pose` | Camera pose 1 to 3 | 1 |
@@ -176,11 +176,13 @@ To save the output to `Benchmarks/benchmark_results.txt` while displaying it in 
 .\Benchmarks\benchmark.ps1 | Tee-Object .\Benchmarks\benchmark_results.txt -Append
 ```
 
+If PowerShell says running scripts is disabled, replace `.\Benchmarks\benchmark.ps1` with `powershell -ExecutionPolicy Bypass -File .\Benchmarks\benchmark.ps1` in either command.
+
 The script automatically locates the executable and runs the predefined benchmark configurations.
 
 ### Results
 
-**Machine:** [CPU model, RAM, OS]. All results use 16 px tiles and a Release build. Thread counts are render worker threads.
+**Machine:** Lenovo ThinkPad X1, Intel Core i7-1255U (2 performance + 8 efficiency cores, 12 threads), 16 GB RAM, Windows 11, Performance power mode. All results use 16 px tiles and a Release build. Thread counts are render worker threads.
 
 **Thread scaling** (Stanford dragon, 202,520 triangles, pose 2, 1 light, median frame time over 30 frames, two separate runs):
 
