@@ -217,7 +217,7 @@ The BVH is about 1,700x faster. The two runs wrote byte-identical images (matchi
 
 - **Cost depends on how much of the frame the mesh covers.** Moving the interactive camera very close, so the model fills the whole viewport, reached roughly 40 ms per frame in the viewer. That is why the benchmark fixes the poses.
 - **Run-to-run variation is about 5 to 10%.** Close other programs before benchmarking, and compare several runs.
-- **Scaling flattens above 8 threads.** The cause has not been investigated. Possible causes include memory latency in BVH traversal and hyperthreading.
+- **Scaling flattens above 8 threads.** This CPU has only 2 performance cores, so extra threads run on slower efficiency cores or share a core. Memory latency in BVH traversal may also contribute. I haven't isolated which effect dominates.
 
 ### Possible improvements
 
